@@ -1,0 +1,17 @@
+{
+  "name": "JobAgent - Karier Selangkah Lebih Dekat",
+  "short_name": "JobAgent",
+  "description": "Temukan pekerjaan dan talenta terbaik.",
+  "theme_color": "#f7f8f5",
+  "background_color": "#f7f8f5",
+  "display": "standalone",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/jobagent-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
