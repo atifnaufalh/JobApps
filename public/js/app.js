@@ -182,7 +182,11 @@ async function loadJobs() {
 
 document.addEventListener("click", async (event) => {
   const authButton = event.target.closest("[data-auth]");
-  if (authButton) openAuth(authButton.dataset.auth, authButton.dataset.role || "candidate");
+  if (authButton) {
+    openAuth(authButton.dataset.auth, authButton.dataset.role || "candidate");
+    document.getElementById("main-nav").classList.remove("nav-open");
+    document.querySelector("[data-menu]").setAttribute("aria-expanded", "false");
+  }
 
   if (event.target.closest("[data-menu]")) {
     const nav = document.getElementById("main-nav");

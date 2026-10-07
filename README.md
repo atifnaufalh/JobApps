@@ -36,7 +36,7 @@ Buka `http://localhost:8000`. Untuk mendaftar sebagai pengguna biasa, buka form 
 php artisan jobagent:make-admin admin@domain-anda.id "Nama Admin"
 ```
 
-Perintah tersebut menolak email yang sudah dipakai akun lain. Admin tidak dapat mendaftar melalui halaman publik; pilih tab Admin pada form Masuk di beranda. URL lama `/admin/login` akan mengarahkan ke form masuk yang sama.
+Perintah tersebut menolak email yang sudah dipakai akun lain. Akun admin masuk menggunakan OTP email, bukan kata sandi; buat dengan alamat email yang dapat Anda akses. Admin tidak dapat mendaftar melalui halaman publik; pilih tab Admin pada form Masuk di beranda. URL lama `/admin/login` akan mengarahkan ke form masuk yang sama.
 
 ## Konfigurasi Firebase dan OTP
 

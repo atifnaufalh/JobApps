@@ -23,6 +23,7 @@
                 @if($currentUser && in_array($currentUser['role'], ['candidate', 'employer'], true))
                     <a href="{{ route('applications') }}">{{ $currentUser['role'] === 'employer' ? 'Lamaran masuk' : 'Lamaran saya' }}</a>
                 @endif
+                <button class="mobile-nav-cta" data-auth="login">Masuk sebagai pengguna atau admin</button>
                 <button class="mobile-nav-cta" data-auth="register" data-role="candidate">Buat akun gratis</button>
             </nav>
             <div class="header-actions">
