@@ -47,6 +47,94 @@ class JobController extends Controller
         return response()->json(['jobs' => $jobs]);
     }
 
+    public function applicationsPage(Request $request)
+    {
+        if (! $request->user()) {
+            return redirect()->route('home', ['login' => 'account']);
+        }
+
+        if ($request->user()->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
+        return view('applications', [
+            'user' => $request->user(),
+            'firebaseConfig' => [
+                'apiKey' => config('services.firebase.api_key'),
+                'authDomain' => config('services.firebase.auth_domain'),
+                'projectId' => config('services.firebase.project_id'),
+                'appId' => config('services.firebase.app_id'),
+            ],
+        ]);
+    }
+
+    public function applications(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! in_array($user->role, ['candidate', 'employer'], true)) {
+            return response()->json(['error' => 'Halaman ini hanya untuk kandidat dan perusahaan.'], 403);
+        }
+
+        $applications = Application::query()
+            ->with(['job.employer', 'candidate'])
+            ->when(
+                $user->role === 'candidate',
+                fn ($query) => $query->where('candidate_id', $user->id),
+                fn ($query) => $query->whereHas('job', fn ($jobs) => $jobs->where('employer_id', $user->id)),
+            )
+            ->latest()
+            ->get()
+            ->map(function (Application $application) use ($user): array {
+                $job = $application->job;
+                $data = [
+                    'id' => $application->id,
+                    'status' => $application->status,
+                    'jobTitle' => $job->title,
+                    'appliedAt' => $application->created_at?->toIso8601String(),
+                    'updatedAt' => $application->updated_at?->toIso8601String(),
+                ];
+
+                if ($user->role === 'candidate') {
+                    return [
+                        ...$data,
+                        'companyName' => $job->employer?->company_name ?? 'Perusahaan JobAgent',
+                        'location' => $job->location,
+                    ];
+                }
+
+                return [
+                    ...$data,
+                    'candidate' => [
+                        'name' => $application->candidate->name,
+                        'email' => $application->candidate->email,
+                        'phone' => $application->candidate->phone,
+                        'location' => $application->candidate->location,
+                        'headline' => $application->candidate->headline,
+                    ],
+                ];
+            });
+
+        return response()->json(['applications' => $applications]);
+    }
+
+    public function updateApplicationStatus(Request $request, Application $application): JsonResponse
+    {
+        if ($request->user()->role !== 'employer') {
+            return response()->json(['error' => 'Hanya perusahaan yang dapat memperbarui status lamaran.'], 403);
+        }
+
+        if ($application->job()->where('employer_id', $request->user()->id)->doesntExist()) {
+            return response()->json(['error' => 'Lamaran tidak ditemukan.'], 404);
+        }
+
+        $data = $request->validate([
+            'status' => ['required', Rule::in(['submitted', 'reviewing', 'interview', 'rejected', 'hired'])],
+        ]);
+        $application->update($data);
+
+        return response()->json(['message' => 'Status lamaran berhasil diperbarui.']);
+    }
+
     public function store(Request $request): JsonResponse
     {
         if ($request->user()->role !== 'employer') {

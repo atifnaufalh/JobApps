@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\EmailOtp;
 use App\Models\User;
+use App\Support\FirebaseCredentials;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -267,9 +268,8 @@ class AuthController extends Controller
         }
 
         try {
-            $serviceAccount = json_decode((string) config('services.firebase.service_account_json'), true, 512, JSON_THROW_ON_ERROR);
             $firebaseAuth = (new Factory)
-                ->withServiceAccount($serviceAccount)
+                ->withServiceAccount(app(FirebaseCredentials::class)->load())
                 ->createAuth();
             $customToken = $firebaseAuth->createCustomToken(
                 $result['user']->firebase_uid,

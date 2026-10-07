@@ -62,6 +62,9 @@ function closeModal(modal) {
 }
 
 function setAuthMode(mode) {
+  if (mode === "register" && state.role === "admin") {
+    state.role = "candidate";
+  }
   state.mode = mode;
   state.otpStep = false;
   const isRegister = mode === "register";
@@ -70,9 +73,13 @@ function setAuthMode(mode) {
   document.getElementById("auth-description").textContent = "Tanpa kata sandi. Kami akan mengirim kode sekali pakai ke emailmu.";
   document.getElementById("email-label").hidden = false;
   document.getElementById("otp-label").hidden = true;
-  document.getElementById("auth-switch").hidden = false;
+  document.getElementById("auth-switch").hidden = state.role === "admin";
   document.getElementById("resend-code").hidden = true;
-  document.querySelector(".auth-form .role-switch").hidden = false;
+  const roleSwitch = document.querySelector(".auth-form .role-switch");
+  roleSwitch.hidden = false;
+  roleSwitch.classList.toggle("admin-choice-visible", !isRegister);
+  document.querySelector('[data-role-choice="admin"]').hidden = isRegister;
+  document.querySelectorAll("[data-role-choice]").forEach((button) => button.classList.toggle("role-selected", button.dataset.roleChoice === state.role));
   document.querySelectorAll("[data-profile]").forEach((section) => { section.hidden = !isRegister || section.dataset.profile !== state.role; });
   document.querySelectorAll("[data-profile] input, [data-profile] select").forEach((field) => {
     const optional = ["phone", "location", "headline", "industry", "companySize", "website", "profilePhoto", "companyLogo"].includes(field.name);
@@ -82,7 +89,20 @@ function setAuthMode(mode) {
 }
 
 function setAuthRole(role) {
+  if (role === "admin" && state.mode === "register") {
+    setAuthMode("login");
+  }
   state.role = role;
+  if (role === "admin") {
+    state.mode = "login";
+    document.getElementById("auth-switch").hidden = true;
+    document.getElementById("auth-kicker").textContent = "AKSES ADMINISTRATOR";
+    document.getElementById("auth-title").textContent = "Masuk sebagai admin.";
+  } else if (state.mode === "login") {
+    document.getElementById("auth-switch").hidden = false;
+    document.getElementById("auth-kicker").textContent = "SELAMAT DATANG KEMBALI";
+    document.getElementById("auth-title").textContent = "Masuk dengan aman.";
+  }
   document.querySelectorAll("[data-role-choice]").forEach((button) => button.classList.toggle("role-selected", button.dataset.roleChoice === role));
   document.querySelectorAll("[data-profile]").forEach((section) => { section.hidden = state.mode !== "register" || section.dataset.profile !== role; });
   document.querySelectorAll("[data-profile] input, [data-profile] select").forEach((field) => {
@@ -96,12 +116,12 @@ function errorFor(error, element) {
   element.hidden = false;
 }
 
-async function signInFirebase(customToken) {
+async function signInFirebase(customToken, appName = "jobagent-browser") {
   const [{ initializeApp }, { getAuth, signInWithCustomToken }] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js"),
   ]);
-  const firebaseApp = initializeApp(window.JobAgent.config, "jobagent-browser");
+  const firebaseApp = initializeApp(window.JobAgent.config, appName);
   await signInWithCustomToken(getAuth(firebaseApp), customToken);
 }
 
@@ -218,6 +238,9 @@ document.addEventListener("click", async (event) => {
   if (event.target.closest("#refresh-jobs")) loadJobs();
 });
 
+const loginTarget = new URLSearchParams(window.location.search).get("login");
+if (loginTarget) openAuth("login", loginTarget === "admin" ? "admin" : "candidate");
+
 document.getElementById("job-search").addEventListener("submit", (event) => {
   event.preventDefault();
   document.getElementById("job-list").scrollIntoView({ behavior: "smooth" });
@@ -281,11 +304,15 @@ authForm.addEventListener("submit", async (event) => {
     document.getElementById("auth-processing").hidden = true;
     document.getElementById("success-overlay").hidden = false;
     try {
-      await signInFirebase(result.firebaseCustomToken);
+      await signInFirebase(result.firebaseCustomToken, result.user.role === "admin" ? "jobagent-admin" : "jobagent-browser");
     } catch {
       document.querySelector(".success-card p").textContent = "Sesi JobAgent berhasil dibuat. Sinkronisasi Firebase Web perlu diperiksa oleh admin.";
     }
     window.JobAgent.user = result.user;
+    if (result.user.role === "admin") {
+      window.location.assign("/admin");
+      return;
+    }
     closeModal(authModal);
     window.setTimeout(() => window.location.reload(), 1800);
   } catch (error) {

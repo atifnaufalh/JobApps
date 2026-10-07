@@ -25,6 +25,6 @@ Artisan::command('jobagent:make-admin {email} {name}', function (string $email, 
         'password' => bcrypt(Str::random(48)),
     ]);
 
-    $this->info("Akun admin berhasil dibuat untuk {$email}. Login memakai kode OTP email di /admin/login.");
+    $this->info("Akun admin berhasil dibuat untuk {$email}. Login dari form Masuk di beranda dengan kode OTP email.");
     return Command::SUCCESS;
 })->purpose('Create a separate JobAgent administrator account');

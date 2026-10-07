@@ -56,6 +56,7 @@ function openUser(user = null) {
   if (user) Object.entries(user).forEach(([key, value]) => {
     if (userForm.elements.namedItem(key)) userForm.elements.namedItem(key).value = value ?? "";
   });
+  userForm.elements.namedItem("company_name").required = userForm.elements.namedItem("role").value === "employer";
   userModal.hidden = false;
   document.body.classList.add("modal-open");
 }
@@ -117,9 +118,6 @@ userForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(data),
     });
 
-    userForm.elements.namedItem("role").addEventListener("change", (event) => {
-      userForm.elements.namedItem("company_name").required = event.target.value === "employer";
-    });
     hideModal(userModal);
     notify(id ? `Akun ${result.user.name} berhasil diperbarui.` : `Akun ${result.user.name} berhasil ditambahkan.`);
     window.setTimeout(() => window.location.reload(), 700);
@@ -159,6 +157,10 @@ function updateChecks(checks) {
     }
   });
 }
+
+userForm.elements.namedItem("role").addEventListener("change", (event) => {
+  userForm.elements.namedItem("company_name").required = event.target.value === "employer";
+});
 
 window.addEventListener("error", () => notify("Ada kendala pada dashboard. Coba muat ulang halaman."));
 window.addEventListener("unhandledrejection", () => notify("Permintaan gagal. Periksa koneksi lalu coba kembali."));

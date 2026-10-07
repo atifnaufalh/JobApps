@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\AdminAuditLog;
 use App\Models\Job;
 use App\Models\User;
+use App\Support\FirebaseCredentials;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -69,14 +70,9 @@ class AdminController extends Controller
             $checks['database'] = 'error';
         }
 
-        $firebaseCredentials = json_decode((string) config('services.firebase.service_account_json'), true);
-        if (
-            ! config('services.firebase.project_id')
-            || ! is_array($firebaseCredentials)
-            || empty($firebaseCredentials['client_email'])
-            || empty($firebaseCredentials['private_key'])
-            || ($firebaseCredentials['project_id'] ?? null) !== config('services.firebase.project_id')
-        ) {
+        try {
+            app(FirebaseCredentials::class)->load();
+        } catch (\InvalidArgumentException) {
             $checks['firebase'] = 'error';
         }
         if (! config('services.mailtarget.key') || ! config('mail.from.address')) {

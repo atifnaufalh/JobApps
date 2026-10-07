@@ -20,6 +20,9 @@
                 <a href="#lowongan">Cari kerja</a>
                 <a href="#cara-kerja">Cara kerja</a>
                 <a href="#perusahaan">Untuk perusahaan</a>
+                @if($currentUser && in_array($currentUser['role'], ['candidate', 'employer'], true))
+                    <a href="{{ route('applications') }}">{{ $currentUser['role'] === 'employer' ? 'Lamaran masuk' : 'Lamaran saya' }}</a>
+                @endif
                 <button class="mobile-nav-cta" data-auth="register" data-role="candidate">Buat akun gratis</button>
             </nav>
             <div class="header-actions">
@@ -97,7 +100,7 @@
             <button class="modal-close" aria-label="Tutup" data-close>×</button><a class="brand" href="/"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a>
             <div class="auth-heading"><span class="section-kicker" id="auth-kicker">MULAI PERJALANAN BARU</span><h2 id="auth-title">Buat akun JobAgent.</h2><p id="auth-description">Tanpa kata sandi. Kami akan mengirim kode sekali pakai ke emailmu.</p><div class="process-indicator" id="auth-processing" hidden><span class="spinner"></span><span id="auth-progress-label">Memeriksa akun dan menyiapkan kode OTP...</span></div></div>
             <form class="auth-form" id="auth-form">
-                <div class="role-switch"><button type="button" class="role-selected" data-role-choice="candidate">⌕ Cari pekerjaan</button><button type="button" data-role-choice="employer">▣ Rekrut talenta</button></div>
+                <div class="role-switch"><button type="button" class="role-selected" data-role-choice="candidate">⌕ Cari pekerjaan</button><button type="button" data-role-choice="employer">▣ Rekrut talenta</button><button type="button" data-role-choice="admin" hidden>⌑ Admin</button></div>
                 <div class="role-fields" data-profile="candidate"><label>Nama lengkap<input name="fullName" minlength="2" maxlength="100" placeholder="Nama sesuai identitas"></label><div class="form-row"><label>Nomor telepon<input name="phone" maxlength="30" placeholder="+62 812..."></label><label>Lokasi<input name="location" maxlength="100" placeholder="Kota domisili"></label></div><label>Bidang yang diminati <span class="optional-label">opsional</span><input name="headline" maxlength="120" placeholder="Contoh: Product Designer"></label></div>
                 <div class="upload-field" data-profile="candidate"><label>Foto profil <span class="optional-label">opsional · JPG, PNG, WebP maks. 3 MB</span><span class="upload-control"><img class="image-preview" alt="Pratinjau foto profil" hidden><span class="upload-symbol">↑</span><span><strong>Unggah foto</strong><small>atau pilih dari perangkat</small></span><input type="file" name="profilePhoto" accept="image/png,image/jpeg,image/webp"></span></label></div>
                 <div class="role-fields" data-profile="employer" hidden><label>Nama perusahaan<input name="companyName" minlength="2" maxlength="120" placeholder="Nama resmi perusahaan"></label><label>Nama kontak / perekrut<input name="contactName" minlength="2" maxlength="100" placeholder="Nama penanggung jawab"></label><div class="form-row"><label>Industri<input name="industry" maxlength="100" placeholder="Contoh: Teknologi"></label><label>Ukuran tim<select name="companySize"><option value="">Pilih ukuran</option><option>1–10 orang</option><option>11–50 orang</option><option>51–200 orang</option><option>201+ orang</option></select></label></div><label>Situs perusahaan <span class="optional-label">opsional</span><input name="website" type="url" maxlength="200" placeholder="https://..."></label>
