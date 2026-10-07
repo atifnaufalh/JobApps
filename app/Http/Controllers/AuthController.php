@@ -34,16 +34,14 @@ class AuthController extends Controller
         $base = $request->validate([
             'email' => ['required', 'email:rfc', 'max:254'],
             'mode' => ['required', Rule::in(['login', 'register'])],
-            'role' => ['required', Rule::in(['candidate', 'employer', 'admin'])],
+            'role' => ['required_if:mode,register', 'nullable', Rule::in(['candidate', 'employer'])],
         ]);
         $email = Str::lower($base['email']);
         $profile = null;
+        $role = $base['role'] ?? null;
 
         if ($base['mode'] === 'register') {
-            if ($base['role'] === 'admin') {
-                return response()->json(['error' => 'Akun admin hanya dapat dibuat melalui perintah server.'], 403);
-            }
-            $profileRules = $base['role'] === 'candidate'
+            $profileRules = $role === 'candidate'
                 ? [
                     'fullName' => ['required', 'string', 'min:2', 'max:100'],
                     'phone' => ['nullable', 'string', 'max:30'],
@@ -73,7 +71,7 @@ class AuthController extends Controller
                 $profileInput,
             );
             $profile = validator($profileInput, $profileRules)->validate();
-            $imageField = $base['role'] === 'candidate' ? 'profilePhoto' : 'companyLogo';
+            $imageField = $role === 'candidate' ? 'profilePhoto' : 'companyLogo';
             $request->validate([
                 $imageField => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072', 'dimensions:max_width=2400,max_height=2400'],
             ]);
@@ -85,7 +83,7 @@ class AuthController extends Controller
         $user = User::where('email', $email)->first();
         $canSend = $base['mode'] === 'register'
             ? $user === null
-            : $user !== null && $user->role === $base['role'];
+            : $user !== null;
 
         if (! $canSend) {
             if (isset($profile['_privateImage'])) {
@@ -94,6 +92,10 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Jika email dapat digunakan, kode verifikasi akan segera dikirim.',
             ], 202);
+        }
+
+        if ($base['mode'] === 'login') {
+            $role = $user->role;
         }
 
         $previous = EmailOtp::where('email', $email)->first();
@@ -119,7 +121,7 @@ class AuthController extends Controller
             [
                 'code_hash' => hash_hmac('sha256', $email.':'.$code, $secret),
                 'mode' => $base['mode'],
-                'role' => $base['role'],
+                'role' => $role,
                 'profile' => $profile,
                 'attempts' => 0,
                 'expires_at' => now()->addMinutes(5),
@@ -175,12 +177,11 @@ class AuthController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email:rfc', 'max:254'],
             'code' => ['required', 'digits:6'],
-            'role' => ['required', Rule::in(['candidate', 'employer', 'admin'])],
         ]);
         $email = Str::lower($data['email']);
         $result = DB::transaction(function () use ($data, $email): array {
             $otp = EmailOtp::where('email', $email)->lockForUpdate()->first();
-            if (! $otp || $otp->expires_at->isPast() || $otp->attempts >= 5 || $otp->role !== $data['role']) {
+            if (! $otp || $otp->expires_at->isPast() || $otp->attempts >= 5) {
                 if ($otp && ($otp->expires_at->isPast() || $otp->attempts >= 5)) {
                     if (isset($otp->profile['_privateImage'])) {
                         Storage::disk('local')->delete($otp->profile['_privateImage']);

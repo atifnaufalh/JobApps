@@ -62,9 +62,6 @@ function closeModal(modal) {
 }
 
 function setAuthMode(mode) {
-  if (mode === "register" && state.role === "admin") {
-    state.role = "candidate";
-  }
   state.mode = mode;
   state.otpStep = false;
   const isRegister = mode === "register";
@@ -73,12 +70,9 @@ function setAuthMode(mode) {
   document.getElementById("auth-description").textContent = "Tanpa kata sandi. Kami akan mengirim kode sekali pakai ke emailmu.";
   document.getElementById("email-label").hidden = false;
   document.getElementById("otp-label").hidden = true;
-  document.getElementById("auth-switch").hidden = state.role === "admin";
+  document.getElementById("auth-switch").hidden = false;
   document.getElementById("resend-code").hidden = true;
-  const roleSwitch = document.querySelector(".auth-form .role-switch");
-  roleSwitch.hidden = false;
-  roleSwitch.classList.toggle("admin-choice-visible", !isRegister);
-  document.querySelector('[data-role-choice="admin"]').hidden = isRegister;
+  document.querySelector(".auth-form .role-switch").hidden = !isRegister;
   document.querySelectorAll("[data-role-choice]").forEach((button) => button.classList.toggle("role-selected", button.dataset.roleChoice === state.role));
   document.querySelectorAll("[data-profile]").forEach((section) => { section.hidden = !isRegister || section.dataset.profile !== state.role; });
   document.querySelectorAll("[data-profile] input, [data-profile] select").forEach((field) => {
@@ -89,20 +83,7 @@ function setAuthMode(mode) {
 }
 
 function setAuthRole(role) {
-  if (role === "admin" && state.mode === "register") {
-    setAuthMode("login");
-  }
   state.role = role;
-  if (role === "admin") {
-    state.mode = "login";
-    document.getElementById("auth-switch").hidden = true;
-    document.getElementById("auth-kicker").textContent = "AKSES ADMINISTRATOR";
-    document.getElementById("auth-title").textContent = "Masuk sebagai admin.";
-  } else if (state.mode === "login") {
-    document.getElementById("auth-switch").hidden = false;
-    document.getElementById("auth-kicker").textContent = "SELAMAT DATANG KEMBALI";
-    document.getElementById("auth-title").textContent = "Masuk dengan aman.";
-  }
   document.querySelectorAll("[data-role-choice]").forEach((button) => button.classList.toggle("role-selected", button.dataset.roleChoice === role));
   document.querySelectorAll("[data-profile]").forEach((section) => { section.hidden = state.mode !== "register" || section.dataset.profile !== role; });
   document.querySelectorAll("[data-profile] input, [data-profile] select").forEach((field) => {
@@ -130,8 +111,9 @@ async function signOutFirebase() {
     import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js"),
   ]);
-  const app = getApps().find((item) => item.name === "jobagent-browser")
-    || initializeApp(window.JobAgent.config, "jobagent-browser");
+  const appName = window.JobAgent.user?.role === "admin" ? "jobagent-admin" : "jobagent-browser";
+  const app = getApps().find((item) => item.name === appName)
+    || initializeApp(window.JobAgent.config, appName);
   await signOut(getAuth(app));
 }
 
@@ -243,7 +225,7 @@ document.addEventListener("click", async (event) => {
 });
 
 const loginTarget = new URLSearchParams(window.location.search).get("login");
-if (loginTarget) openAuth("login", loginTarget === "admin" ? "admin" : "candidate");
+if (loginTarget) openAuth("login");
 
 document.getElementById("job-search").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -269,8 +251,8 @@ authForm.addEventListener("submit", async (event) => {
       const payload = new FormData();
       payload.append("email", email);
       payload.append("mode", state.mode);
-      payload.append("role", state.role);
       if (state.mode === "register") {
+        payload.append("role", state.role);
         const profileNames = state.role === "candidate"
           ? ["fullName", "phone", "location", "headline"]
           : ["contactName", "companyName", "industry", "companySize", "website"];
@@ -303,7 +285,7 @@ authForm.addEventListener("submit", async (event) => {
     document.getElementById("auth-progress-label").textContent = "Mencocokkan kode dan mengamankan sesi akun...";
     const result = await request("/api/auth/verify-otp", {
       method: "POST",
-      body: JSON.stringify({ email: form.get("email"), code: form.get("code"), role: state.role }),
+      body: JSON.stringify({ email: form.get("email"), code: form.get("code") }),
     });
     document.getElementById("auth-processing").hidden = true;
     document.getElementById("success-overlay").hidden = false;
