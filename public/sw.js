@@ -1,5 +1,5 @@
-const CACHE_NAME = "jobagent-static-v3";
-const ASSETS = ["/css/app.css", "/css/effects.css", "/js/app.js", "/js/applications.js", "/js/admin.js", "/jobagent-mark.svg", "/manifest.webmanifest"];
+const CACHE_NAME = "jobagent-static-v4";
+const ASSETS = ["/css/app.css", "/css/effects.css", "/js/app.js", "/js/applications.js", "/js/admin.js", "/js/password-reset.js", "/jobagent-mark.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));

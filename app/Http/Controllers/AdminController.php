@@ -75,7 +75,7 @@ class AdminController extends Controller
         } catch (\InvalidArgumentException) {
             $checks['firebase'] = 'error';
         }
-        if (! config('services.mailtarget.key') || ! config('mail.from.address')) {
+        if (! config('services.firebase.api_key') || ! config('services.firebase.auth_domain')) {
             $checks['email'] = 'error';
         }
 

@@ -7,8 +7,8 @@ window.JobAgentFirebaseSignOut = async () => {
     import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js"),
   ]);
-  const app = getApps().find((item) => item.name === "jobagent-admin")
-    || initializeApp(window.JobAgent.config, "jobagent-admin");
+  const app = getApps().find((item) => item.name === "jobagent-browser")
+    || initializeApp(window.JobAgent.config, "jobagent-browser");
   await signOut(getAuth(app));
 };
 
@@ -51,8 +51,8 @@ function openUser(user = null) {
   document.getElementById("user-form-error").hidden = true;
   document.getElementById("user-modal-title").textContent = user ? "Perbarui akun." : "Tambah akun.";
   document.getElementById("user-modal-description").textContent = user
-    ? "Perubahan alamat email mengharuskan pemilik akun memverifikasi email melalui OTP."
-    : "Akun baru dapat masuk setelah alamat emailnya diverifikasi dengan OTP.";
+    ? "Perubahan alamat email mengharuskan pemilik akun memverifikasi email melalui Firebase."
+    : "Akun baru dapat masuk setelah alamat emailnya diverifikasi melalui Firebase.";
   if (user) Object.entries(user).forEach(([key, value]) => {
     if (userForm.elements.namedItem(key)) userForm.elements.namedItem(key).value = value ?? "";
   });

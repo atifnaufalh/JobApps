@@ -1,10 +1,6 @@
 <?php
 
 return [
-    'mailtarget' => [
-        'key' => env('MAILTARGET_API_KEY'),
-        'endpoint' => env('MAILTARGET_ENDPOINT', 'https://transmission.mailtarget.co/v1/layang/transmissions'),
-    ],
     'firebase' => [
         'project_id' => env('FIREBASE_PROJECT_ID'),
         'api_key' => env('FIREBASE_API_KEY'),
@@ -15,8 +11,5 @@ return [
         'measurement_id' => env('FIREBASE_MEASUREMENT_ID'),
         'credentials' => env('FIREBASE_CREDENTIALS'),
         'service_account_json' => env('FIREBASE_SERVICE_ACCOUNT_JSON'),
-    ],
-    'otp' => [
-        'secret' => env('OTP_SECRET'),
     ],
 ];

@@ -6,6 +6,7 @@ use App\Http\Controllers\JobController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [JobController::class, 'index'])->name('home');
+Route::get('/password/reset', [AuthController::class, 'passwordResetPage'])->name('password.reset');
 Route::redirect('/admin/login', '/?login=admin')->name('admin.login');
 Route::get('/admin', [AdminController::class, 'index'])->middleware('admin')->name('admin.dashboard');
 Route::get('/applications', [JobController::class, 'applicationsPage'])->name('applications');
@@ -15,8 +16,7 @@ Route::prefix('api')->group(function (): void {
     Route::get('/jobs', [JobController::class, 'indexJson']);
     Route::get('/applications', [JobController::class, 'applications'])->middleware('auth');
     Route::patch('/applications/{application}', [JobController::class, 'updateApplicationStatus'])->middleware('auth');
-    Route::post('/auth/request-otp', [AuthController::class, 'requestOtp'])->middleware('throttle:otp');
-    Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:otp');
+    Route::post('/auth/firebase-session', [AuthController::class, 'firebaseSession'])->middleware('throttle:firebase-auth');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth');
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth');
     Route::middleware('auth')->group(function (): void {
