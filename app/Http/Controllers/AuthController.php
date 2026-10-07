@@ -19,15 +19,10 @@ use Throwable;
 
 class AuthController extends Controller
 {
-    public function passwordResetPage()
+    public function passwordResetPage(Request $request)
     {
         return response()->view('password-reset', [
-            'firebaseConfig' => [
-                'apiKey' => config('services.firebase.api_key'),
-                'authDomain' => config('services.firebase.auth_domain'),
-                'projectId' => config('services.firebase.project_id'),
-                'appId' => config('services.firebase.app_id'),
-            ],
+            'resetComplete' => $request->query('status') === 'complete',
         ])->header('Cache-Control', 'no-store, private')
             ->header('Referrer-Policy', 'no-referrer');
     }

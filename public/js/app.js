@@ -429,7 +429,7 @@ document.getElementById("forgot-password").addEventListener("click", async () =>
       import("https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js"),
       firebaseAuth(),
     ]);
-    const returnUrl = `${window.location.origin}/?login=account`;
+    const returnUrl = `${window.location.origin}/password/reset?status=complete`;
     await sendPasswordResetEmail(auth, email, { url: returnUrl, handleCodeInApp: false });
     showToast("Jika akun tersedia, tautan reset kata sandi akan dikirim.");
   } catch (error) {

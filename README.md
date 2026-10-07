@@ -42,7 +42,7 @@ Di Firebase Console untuk project `jobsagent-f4fda`:
 1. Buka **Authentication → Sign-in method**, aktifkan **Email/Password** (password sign-in) dan **Google**.
 2. Pada **Authentication → Settings → Authorized domains**, tambahkan domain lokal dan domain publik Railway aplikasi.
 3. Atur template **Email address verification** dan **Password reset** sesuai bahasa yang diinginkan.
-4. Agar email reset membuka halaman reset JobAgent, atur URL action handler pada template **Password reset** menjadi `https://<domain-aplikasi>/password/reset`. Pastikan domain tersebut ada di Authorized domains. Halaman akan memvalidasi `mode` dan `oobCode` menggunakan Firebase sebelum mengizinkan kata sandi baru.
+4. Biarkan action handler/template email reset memakai handler standar Firebase. Aplikasi mengatur `ActionCodeSettings.url` ke `https://<domain-aplikasi>/password/reset?status=complete`; Firebase menangani tautan reset terlebih dahulu, lalu mengarahkan pengguna ke halaman konfirmasi JobAgent. Tidak perlu memverifikasi kepemilikan DNS domain Railway pada template. Domain aplikasi tetap harus ada di Authorized domains.
 5. Di **Project settings → Service accounts**, buat kredensial Firebase Admin untuk server. Simpan file JSON dengan aman; jangan pernah masukkan ke Git atau direktori publik.
 
 Firebase Web config bukan rahasia Admin. Variabel berikut memasok konfigurasi Web dan verifikasi token di backend:
@@ -58,7 +58,7 @@ FIREBASE_MEASUREMENT_ID=<Firebase measurement ID>
 FIREBASE_SERVICE_ACCOUNT_JSON=<seluruh isi JSON Admin SDK; simpan sebagai secret>
 ```
 
-Frontend memakai Firebase SDK untuk pendaftaran, login email/kata sandi, login Google, verifikasi email, dan reset kata sandi. Backend hanya memverifikasi Firebase ID token menggunakan service account, membuat sesi Laravel, dan mengambil peran dari database. Email verifikasi/reset dikirim langsung oleh Firebase; Mailtarget dan OTP tidak lagi digunakan. Setelah membuka tautan verifikasi, pengguna kembali ke situs lalu masuk. Tautan reset membuka halaman khusus JobAgent; setelah kata sandi berhasil diubah, sesi Laravel dibuat dan pengguna diarahkan ke dashboard sesuai perannya.
+Frontend memakai Firebase SDK untuk pendaftaran, login email/kata sandi, login Google, verifikasi email, dan reset kata sandi. Backend hanya memverifikasi Firebase ID token menggunakan service account, membuat sesi Laravel, dan mengambil peran dari database. Email verifikasi/reset dikirim langsung oleh Firebase; Mailtarget dan OTP tidak lagi digunakan. Firebase menangani form penggantian password pada hosted action handler, lalu mengarahkan pengguna ke halaman konfirmasi Laravel `/password/reset?status=complete`. Pengguna kemudian masuk memakai kata sandi baru untuk membuka dashboard sesuai perannya.
 
 Akun lama yang hanya terdaftar di database JobAgent perlu dibuat/ditautkan di Firebase Authentication menggunakan email yang sama. Pengguna dapat mendaftar lewat form JobAgent dengan email yang sama, verifikasi email, lalu masuk; backend mempertahankan peran lama yang sudah ada. Untuk admin, buat akun Firebase Authentication dengan email admin yang sama dan verifikasi sebelum login.
 
