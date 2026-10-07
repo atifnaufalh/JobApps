@@ -1,11 +1,11 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
+    "builder": "RAILPACK",
     "buildCommand": "composer install --no-dev --optimize-autoloader --no-interaction"
   },
   "deploy": {
-    "preDeployCommand": "php artisan migrate --force",
+    "preDeployCommand": ["php artisan migrate --force"],
     "startCommand": "php artisan storage:link --force && php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan serve --host=0.0.0.0 --port=$PORT",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 100,
