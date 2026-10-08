@@ -104,6 +104,11 @@ function errorFor(error, element) {
   element.hidden = false;
 }
 
+function firebaseErrorCode(error) {
+  const code = typeof error?.code === "string" ? error.code : "";
+  return code.startsWith("auth/api-key-not-valid") ? "auth/api-key-not-valid" : code;
+}
+
 async function firebaseAuth() {
   const [{ getApps, initializeApp }, { getAuth, setPersistence, browserLocalPersistence }] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js"),
@@ -364,10 +369,11 @@ authForm.addEventListener("submit", async (event) => {
       "auth/too-many-requests": "Terlalu banyak percobaan. Coba lagi nanti.",
       "auth/unauthorized-domain": "Domain aplikasi belum diizinkan di Firebase Authentication.",
       "auth/user-disabled": "Akun ini dinonaktifkan. Hubungi administrator JobAgent.",
+      "auth/api-key-not-valid": "Firebase API key tidak valid. Periksa FIREBASE_API_KEY di Railway dan pastikan berasal dari project jobsagent-f4fda.",
     };
     const message = error.status === 404
       ? "Profil JobAgent belum ada. Pilih Daftar untuk membuat profil dengan akun ini."
-      : messages[error.code] || error.message;
+      : messages[firebaseErrorCode(error)] || error.message;
     errorFor(new Error(message), errorBox);
   } finally {
     processing.hidden = true;
@@ -404,10 +410,11 @@ document.getElementById("google-auth").addEventListener("click", async (event) =
       "auth/operation-not-allowed": "Aktifkan Google sebagai metode login di Firebase Authentication.",
       "auth/unauthorized-domain": "Domain aplikasi belum diizinkan di Firebase Authentication.",
       "auth/account-exists-with-different-credential": "Email ini sudah terdaftar menggunakan metode lain. Masuk dengan metode awal untuk akun tersebut.",
+      "auth/api-key-not-valid": "Firebase API key tidak valid. Periksa FIREBASE_API_KEY di Railway dan pastikan berasal dari project jobsagent-f4fda.",
     };
     const message = error.status === 404 && state.mode === "login"
       ? "Profil JobAgent belum ada. Pilih Daftar untuk membuat profil dengan akun Google ini."
-      : messages[error.code] || error.message;
+      : messages[firebaseErrorCode(error)] || error.message;
     errorFor(new Error(message), errorBox);
   } finally {
     document.getElementById("auth-processing").hidden = true;
