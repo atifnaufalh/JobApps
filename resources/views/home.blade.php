@@ -21,6 +21,7 @@
                 <a href="#cara-kerja">Cara kerja</a>
                 <a href="#perusahaan">Untuk perusahaan</a>
                 @if($currentUser && in_array($currentUser['role'], ['candidate', 'employer'], true))
+                    <a href="{{ route('dashboard') }}">Dasbor {{ $currentUser['role'] === 'employer' ? 'perusahaan' : 'saya' }}</a>
                     <a href="{{ route('applications') }}">{{ $currentUser['role'] === 'employer' ? 'Lamaran masuk' : 'Lamaran saya' }}</a>
                 @endif
                 <button class="mobile-nav-cta" data-auth="login">Masuk</button>

@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JobController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [JobController::class, 'index'])->name('home');
@@ -10,6 +12,7 @@ Route::get('/password/reset', [AuthController::class, 'passwordResetPage'])->nam
 Route::redirect('/admin/login', '/?login=admin')->name('admin.login');
 Route::get('/admin', [AdminController::class, 'index'])->middleware('admin')->name('admin.dashboard');
 Route::get('/applications', [JobController::class, 'applicationsPage'])->name('applications');
+Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
 Route::prefix('api')->group(function (): void {
     Route::get('/health', [AdminController::class, 'health']);
@@ -21,7 +24,14 @@ Route::prefix('api')->group(function (): void {
     Route::get('/me', [AuthController::class, 'me'])->middleware('auth');
     Route::middleware('auth')->group(function (): void {
         Route::post('/jobs', [JobController::class, 'store']);
+        Route::patch('/jobs/{job}', [JobController::class, 'updateJob']);
+        Route::delete('/jobs/{job}', [JobController::class, 'destroyJob']);
         Route::post('/jobs/{job}/apply', [JobController::class, 'apply']);
+        Route::get('/dashboard', [DashboardController::class, 'api']);
+        Route::post('/profile', [ProfileController::class, 'update']);
+        Route::put('/profile/cv', [ProfileController::class, 'saveCv']);
+        Route::post('/profile/cv/document', [ProfileController::class, 'uploadCv']);
+        Route::delete('/profile/cv/document', [ProfileController::class, 'deleteCv']);
     });
     Route::prefix('admin')->middleware('admin')->group(function (): void {
         Route::get('/users', [AdminController::class, 'users']);

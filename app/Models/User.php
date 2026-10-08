@@ -40,4 +40,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Job::class, 'employer_id');
     }
+
+    public function candidateProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CandidateProfile::class);
+    }
 }

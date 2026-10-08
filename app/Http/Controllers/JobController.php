@@ -155,6 +155,43 @@ class JobController extends Controller
         return response()->json(['job' => $this->jobData($job->load('employer:id,company_name,company_logo_path'))], 201);
     }
 
+    public function updateJob(Request $request, Job $job): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->role !== 'employer' || $job->employer_id !== $user->id) {
+            return response()->json(['error' => 'Lowongan tidak ditemukan.'], 404);
+        }
+
+        $data = $request->validate([
+            'title' => ['required', 'string', 'min:3', 'max:120'],
+            'location' => ['required', 'string', 'min:2', 'max:120'],
+            'type' => ['required', Rule::in(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'])],
+            'salary' => ['nullable', 'string', 'max:80'],
+            'category' => ['required', 'string', 'max:60'],
+            'description' => ['required', 'string', 'min:30', 'max:5000'],
+            'status' => ['required', Rule::in(['active', 'closed'])],
+        ]);
+
+        $job->update($data);
+
+        return response()->json([
+            'message' => 'Lowongan berhasil diperbarui.',
+            'job' => $this->jobData($job->loadCount('applications')),
+        ]);
+    }
+
+    public function destroyJob(Request $request, Job $job): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->role !== 'employer' || $job->employer_id !== $user->id) {
+            return response()->json(['error' => 'Lowongan tidak ditemukan.'], 404);
+        }
+
+        $job->delete();
+
+        return response()->json(['message' => 'Lowongan berhasil dihapus.']);
+    }
+
     public function apply(Request $request, Job $job): JsonResponse
     {
         if ($request->user()->role !== 'candidate') {
@@ -187,6 +224,8 @@ class JobController extends Controller
             'salary' => $job->salary,
             'category' => $job->category,
             'description' => $job->description,
+            'status' => $job->status,
+            'applicationsCount' => $job->applications_count ?? 0,
             'createdAt' => $job->created_at?->toIso8601String(),
         ];
     }
