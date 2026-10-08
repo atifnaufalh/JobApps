@@ -97,6 +97,42 @@
 
     <footer class="site-footer"><a class="brand" href="/"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a><span>© {{ date('Y') }} JobAgent. Temukan peluang, tumbuh bersama.</span><div><a href="#cara-kerja">Tentang kami</a><a href="mailto:halo@jobagent.id">Hubungi kami</a><button class="footer-status" data-check-status>Status layanan</button></div></footer>
 
+    <div class="modal-backdrop" id="job-detail-modal" hidden>
+        <section class="job-detail" role="dialog" aria-modal="true" aria-labelledby="jd-title">
+            <button class="modal-close" aria-label="Tutup" data-close>×</button>
+            <header class="jd-head">
+                <div class="jd-company-row">
+                    <div class="company-mark jd-logo" id="jd-logo"></div>
+                    <div class="jd-heading">
+                        <span class="section-kicker" id="jd-category">KARIER</span>
+                        <h2 id="jd-title">Lowongan</h2>
+                        <p class="jd-sub" id="jd-sub"></p>
+                    </div>
+                </div>
+                <div class="jd-meta" id="jd-meta"></div>
+                <div class="jd-actions" id="jd-actions"></div>
+            </header>
+            <div class="jd-body">
+                <div class="jd-main">
+                    <section class="jd-block">
+                        <h3>Tentang pekerjaan</h3>
+                        <div class="jd-desc" id="jd-desc"></div>
+                    </section>
+                </div>
+                <aside class="jd-side">
+                    <div class="jd-card">
+                        <h4>Info lowongan</h4>
+                        <ul class="jd-facts" id="jd-facts"></ul>
+                    </div>
+                    <div class="jd-card">
+                        <h4>Tentang perusahaan</h4>
+                        <div class="jd-company"><div class="company-mark" id="jd-side-logo"></div><div class="jd-company-copy"><strong id="jd-side-name"></strong><span>Perusahaan perekrut di JobAgent</span></div></div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </div>
+
     <div class="modal-backdrop" id="auth-modal" hidden>
         <section class="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
             <button class="modal-close" aria-label="Tutup" data-close>×</button><a class="brand" href="/"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a>

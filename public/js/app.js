@@ -4,6 +4,7 @@ const state = {
   jobs: [],
   category: "Semua",
   verificationUser: null,
+  detailJob: null,
 };
 
 let verificationWatch = null;
@@ -12,6 +13,7 @@ let resendCooldown = null;
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 const authModal = document.getElementById("auth-modal");
 const jobModal = document.getElementById("job-modal");
+const jobDetailModal = document.getElementById("job-detail-modal");
 const authForm = document.getElementById("auth-form");
 
 function showToast(message) {
@@ -303,8 +305,53 @@ async function renderJobs() {
   grid.innerHTML = filtered.map((job, index) => {
     const letter = escapeHtml(job.companyName?.slice(0, 1) || "J");
     const logo = job.companyLogo ? `<img src="${escapeHtml(job.companyLogo)}" alt="" loading="lazy">` : letter;
-    return `<article class="job-card"><div class="job-card-top"><div class="company-mark company-${index % 4}">${logo}</div><span class="job-age">${escapeHtml(relativeDate(job.createdAt))}</span></div><div class="job-category">${escapeHtml(job.category || "Karier pilihan")}</div><h4>${escapeHtml(job.title)}</h4><p class="job-company">${escapeHtml(job.companyName)}</p><p class="job-description">${escapeHtml(job.description)}</p><div class="job-tags"><span>⌖ ${escapeHtml(job.location)}</span><span>▣ ${escapeHtml(job.type)}</span></div><div class="job-card-bottom"><strong>${escapeHtml(job.salary || "Gaji kompetitif")}</strong><button data-apply="${Number(job.id)}" aria-label="Lamar ${escapeHtml(job.title)}">↗</button></div></article>`;
+    return `<article class="job-card" data-job-card data-job="${escapeHtml(JSON.stringify(job))}"><div class="job-card-top"><div class="company-mark company-${index % 4}">${logo}</div><span class="job-age">${escapeHtml(relativeDate(job.createdAt))}</span></div><div class="job-category">${escapeHtml(job.category || "Karier pilihan")}</div><h4>${escapeHtml(job.title)}</h4><p class="job-company">${escapeHtml(job.companyName)}</p><p class="job-description">${escapeHtml(job.description)}</p><div class="job-tags"><span>⌖ ${escapeHtml(job.location)}</span><span>▣ ${escapeHtml(job.type)}</span></div><div class="job-card-bottom"><strong>${escapeHtml(job.salary || "Gaji kompetitif")}</strong><button data-apply="${Number(job.id)}" aria-label="Lamar ${escapeHtml(job.title)}">↗</button></div></article>`;
   }).join("");
+}
+
+function openJobDetail(job) {
+  if (!job) return;
+  state.detailJob = job;
+  const user = window.JobAgent.user;
+  const letter = escapeHtml((job.companyName || "J").slice(0, 1));
+  const logo = job.companyLogo ? `<img src="${escapeHtml(job.companyLogo)}" alt="">` : letter;
+  document.getElementById("jd-logo").innerHTML = logo;
+  document.getElementById("jd-side-logo").innerHTML = logo;
+  document.getElementById("jd-category").textContent = (job.category || "Karier pilihan").toUpperCase();
+  document.getElementById("jd-title").textContent = job.title;
+  document.getElementById("jd-sub").textContent = `${job.companyName} · ${job.location}`;
+  document.getElementById("jd-meta").innerHTML = [job.location, job.type, job.salary || "Gaji kompetitif", relativeDate(job.createdAt)]
+    .map((text) => `<span class="jd-chip">${escapeHtml(text)}</span>`).join("");
+  document.getElementById("jd-desc").textContent = job.description;
+  const facts = [
+    ["Lokasi", job.location],
+    ["Tipe kerja", job.type],
+    ["Bidang", job.category || "Karier pilihan"],
+    ["Gaji", job.salary || "Gaji kompetitif"],
+    ["Dipublikasikan", relativeDate(job.createdAt)],
+    ["Pelamar", `${job.applicationsCount ?? 0} pelamar`],
+  ];
+  document.getElementById("jd-facts").innerHTML = facts.map(([label, value]) => `<li><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></li>`).join("");
+  document.getElementById("jd-side-name").textContent = job.companyName;
+  renderJobDetailActions(user);
+  jobDetailModal.hidden = false;
+  document.body.classList.add("modal-open");
+}
+
+function renderJobDetailActions(user) {
+  const bar = document.getElementById("jd-actions");
+  if (!user) {
+    bar.innerHTML = '<button class="button" data-auth="register" data-role="candidate">Lamar sekarang <span>→</span></button>'
+      + '<button class="ghost-button" data-auth="register" data-role="candidate">Daftar</button>'
+      + '<button class="ghost-button" data-auth="login">Masuk</button>'
+      + '<span class="jd-hint">Masuk atau daftar untuk melamar lowongan ini.</span>';
+  } else if (user.role === "candidate") {
+    bar.innerHTML = '<button class="button" data-jd-apply>Lamar sekarang <span>→</span></button>'
+      + '<a class="ghost-button jd-ghost-link" href="/dashboard">Buka dashboard</a>';
+  } else {
+    bar.innerHTML = '<a class="button" href="/dashboard">Buka dashboard <span>→</span></a>'
+      + '<span class="jd-hint">Lowongan ini ditujukan untuk pencari kerja.</span>';
+  }
 }
 
 function escapeHtml(value) {
@@ -357,7 +404,7 @@ document.addEventListener("click", async (event) => {
     event.target.closest("[data-menu]").setAttribute("aria-expanded", String(open));
   }
   if (event.target.closest("[data-close]")) closeModal(event.target.closest(".modal-backdrop"));
-  if (event.target === authModal || event.target === jobModal) closeModal(event.target);
+  if (event.target === authModal || event.target === jobModal || event.target === jobDetailModal) closeModal(event.target);
 
   const roleButton = event.target.closest("[data-role-choice]");
   if (roleButton) setAuthRole(roleButton.dataset.roleChoice);
@@ -374,15 +421,28 @@ document.addEventListener("click", async (event) => {
     renderJobs();
   }
 
-  const applyButton = event.target.closest("[data-apply]");
-  if (applyButton) {
-    if (!window.JobAgent.user) return openAuth("login", "candidate");
+  const jdApply = event.target.closest("[data-jd-apply]");
+  if (jdApply) {
+    const job = state.detailJob;
+    jdApply.disabled = true;
     try {
-      const result = await request(`/api/jobs/${applyButton.dataset.apply}/apply`, { method: "POST", body: "{}" });
+      const result = await request(`/api/jobs/${job.id}/apply`, { method: "POST", body: "{}" });
       showToast(result.message);
+      document.getElementById("jd-actions").innerHTML = '<span class="jd-success">Lamaran berhasil dikirim.</span><a class="button" href="/dashboard">Buka dashboard <span>→</span></a><a class="ghost-button jd-ghost-link" href="/applications">Lihat lamaran saya</a>';
     } catch (error) {
       showToast(error.message);
+      jdApply.disabled = false;
+      if (error.status === 409) {
+        document.getElementById("jd-actions").innerHTML = '<span class="jd-success">Kamu sudah melamar lowongan ini.</span><a class="button" href="/dashboard">Buka dashboard <span>→</span></a>';
+      }
     }
+  }
+
+  const jobCard = event.target.closest("[data-job-card]");
+  if (jobCard) {
+    let job = null;
+    try { job = JSON.parse(jobCard.dataset.job); } catch { job = null; }
+    if (job) openJobDetail(job);
   }
 
   if (event.target.closest("[data-open-job]")) {
