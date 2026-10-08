@@ -255,7 +255,7 @@
 
     <div class="toast" id="dash-toast" hidden><span class="toast-check">✓</span><span id="dash-toast-message"></span></div>
 
-    <script>window.JobAgent = {config: @json($firebaseConfig), user: @json(['id'=>$user->id,'name'=>$user->name,'email'=>$user->email,'role'=>$user->role,'headline'=>$user->headline,'location'=>$user->location,'phone'=>$user->phone]), cv: @json(['summary'=>$cv->summary ?? null,'skills'=>$cv->skills ?? [],'experiences'=>$cv->experiences ?? [],'educations'=>$cv->educations ?? [],'links'=>$cv->links ?? []]), avatarUrl: @json($avatarUrl)};</script>
+    <script>window.JobAgent = {config: @json($firebaseConfig), user: @js(['id'=>$user->id,'name'=>$user->name,'email'=>$user->email,'role'=>$user->role,'headline'=>$user->headline,'location'=>$user->location,'phone'=>$user->phone]), cv: @js(['summary'=>$cv->summary ?? null,'skills'=>$cv->skills ?? [],'experiences'=>$cv->experiences ?? [],'educations'=>$cv->educations ?? [],'links'=>$cv->links ?? []]), avatarUrl: @json($avatarUrl)};</script>
     <script src="{{ asset('js/smart-fields.js') }}" defer></script>
     <script src="{{ asset('js/dashboard.js') }}" defer></script>
 </body>
