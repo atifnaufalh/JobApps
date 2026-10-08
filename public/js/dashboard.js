@@ -3,7 +3,21 @@
   const role = document.body.dataset.role;
   const isEmployer = role === "employer";
 
-  const state = { stats: [], applications: [], jobs: [], suggestedJobs: [], cvCompletion: 0, loaded: false, loading: false };
+  const state = {
+    stats: [],
+    applications: [],
+    jobs: [],
+    suggestedJobs: [],
+    publicJobs: [],
+    appliedJobIds: new Set(),
+    selectedJobId: null,
+    jdFilter: "all",
+    jdQuery: "",
+    appFilter: "all",
+    cvCompletion: 0,
+    loaded: false,
+    loading: false,
+  };
 
   const STATUS = {
     submitted: "Baru masuk",
@@ -15,11 +29,14 @@
 
   const TITLES = {
     overview: { kicker: "OVERVIEW", title: "Ringkasan" },
+    browse: { kicker: "CARI LOWONGAN", title: "Cari lowongan" },
     applications: { kicker: isEmployer ? "SELEKSI KANDIDAT" : "PROGRES LAMARAN", title: isEmployer ? "Lamaran masuk" : "Lamaran saya" },
     jobs: { kicker: "MANAJEMEN LOWONGAN", title: "Lowongan saya" },
     cv: { kicker: "PROFIL PUBLIK", title: "CV online" },
     profile: { kicker: "DATA AKUN", title: isEmployer ? "Profil perusahaan" : "Profil saya" },
   };
+
+  const APP_CLOSED = ["rejected", "hired"];
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -64,7 +81,7 @@
 
   /* ── Navigation ─────────────────────────── */
   function showSection(name, { updateHash = true } = {}) {
-    if (!TITLES[name] || (name === "jobs" && !isEmployer) || (name === "cv" && isEmployer)) name = "overview";
+    if (!TITLES[name] || (name === "jobs" && !isEmployer) || (name === "cv" && isEmployer) || (name === "browse" && isEmployer)) name = "overview";
     $$(".dash-section").forEach((section) => { section.hidden = section.dataset.section !== name; });
     $$(".dash-link[data-goto]").forEach((link) => link.classList.toggle("dash-link-active", link.dataset.goto === name));
     $$(".dash-bottom-link").forEach((link) => link.classList.toggle("bottom-active", link.dataset.goto === name));
@@ -73,7 +90,8 @@
     if (updateHash) history.replaceState(null, "", `#${name}`);
     closeDrawer();
     window.scrollTo({ top: 0, behavior: "smooth" });
-    if (name === "overview") loadDashboard();
+    if (name === "overview" || name === "browse") loadDashboard();
+    if (name === "browse") requestAnimationFrame(renderJobBoard);
     if (name === "cv" && renderCvPreview) renderCvPreview();
   }
 
@@ -126,13 +144,65 @@
 
   /* ── Dashboard data ─────────────────────── */
   function renderStats() {
-    $("#dash-stats").innerHTML = state.stats.map((stat) => `
+    const grid = $("#dash-stats");
+    if (!grid) return;
+    grid.innerHTML = state.stats.map((stat) => `
       <article class="stat-card">
         <span>${escapeHtml(stat.label)}</span>
-        <strong>${Number(stat.value).toLocaleString("id-ID")}</strong>
+        <strong data-count-to="${Number(stat.value) || 0}">0</strong>
         <small>${escapeHtml(stat.note)}</small>
         <i>${escapeHtml(stat.icon)}</i>
       </article>`).join("");
+    animateCounters(grid);
+  }
+
+  /* Counter halus untuk angka statistik */
+  function animateCounters(root) {
+    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    $$("[data-count-to]", root).forEach((node) => {
+      const target = Number(node.dataset.countTo) || 0;
+      if (prefersReduced || target === 0) {
+        node.textContent = target.toLocaleString("id-ID");
+        return;
+      }
+      const duration = 620;
+      const start = performance.now();
+      const step = (now) => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        node.textContent = Math.round(target * eased).toLocaleString("id-ID");
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  function updateProfileCounts() {
+    $$("[data-dash-count]").forEach((node) => {
+      const key = node.dataset.dashCount;
+      const value = key === "applications" ? state.applications.length : state.jobs.length;
+      node.textContent = value.toLocaleString("id-ID");
+    });
+  }
+
+  const APPLICATION_STEPS = [
+    { key: "submitted", label: "Terkirim" },
+    { key: "reviewing", label: "Ditinjau" },
+    { key: "interview", label: "Wawancara" },
+    { key: "hired", label: "Diterima" },
+  ];
+
+  function applicationSteps(application) {
+    const order = ["submitted", "reviewing", "interview", "hired"];
+    const rejected = application.status === "rejected";
+    const current = order.indexOf(application.status);
+    return `<div class="dash-steps ${rejected ? "is-rejected" : ""}">${APPLICATION_STEPS.map((step, index) => {
+      const done = !rejected && current >= index;
+      const active = !rejected && current === index;
+      return `<span class="dash-step ${done ? "is-done" : ""} ${active ? "is-active" : ""}">
+        <i>${done ? "✓" : index + 1}</i><em>${escapeHtml(step.label)}</em>
+      </span>`;
+    }).join("")}<span class="dash-step-note">${rejected ? "Lamaran tidak dilanjutkan" : escapeHtml(STATUS[application.status] || "Dalam proses")}</span></div>`;
   }
 
   function applicationCard(application, compact = false) {
@@ -167,12 +237,13 @@
          </div>`
       : `<div class="dash-list-side">${status}</div>`;
 
-    return `<article class="dash-app-card">
+    return `<article class="dash-app-card" data-application="${Number(application.id)}">
         <div class="dash-app-head">
             <div><span class="section-kicker">${isEmployer ? "KANDIDAT MELAMAR" : "POSISI YANG DILAMAR"}</span><h3>${escapeHtml(application.jobTitle)}</h3></div>
             ${control}
         </div>
         ${person}
+        ${isEmployer ? "" : applicationSteps(application)}
         <div class="dash-app-foot"><span>Dikirim ${formatDate(application.appliedAt)}</span><span>Diperbarui ${formatDate(application.updatedAt)}</span></div>
     </article>`;
   }
@@ -180,14 +251,28 @@
   function renderApplications() {
     const list = $("#dash-applications");
     if (list) {
-      list.innerHTML = state.applications.length
-        ? state.applications.map((application) => applicationCard(application)).join("")
-        : `<div class="dash-empty">${isEmployer ? "Belum ada lamaran masuk untuk lowonganmu." : "Kamu belum mengirim lamaran. Temukan peluang di beranda."}</div>`;
+      const filtered = state.applications.filter((application) => {
+        if (state.appFilter === "active") return !APP_CLOSED.includes(application.status);
+        if (state.appFilter === "closed") return APP_CLOSED.includes(application.status);
+        return true;
+      });
+      list.innerHTML = filtered.length
+        ? filtered.map((application) => applicationCard(application)).join("")
+        : `<div class="dash-empty">${isEmployer ? "Belum ada lamaran masuk untuk lowonganmu." : state.appFilter === "active" ? "Tidak ada lamaran yang sedang diproses." : state.appFilter === "closed" ? "Belum ada lamaran yang selesai." : "Kamu belum mengirim lamaran. Temukan peluang di beranda."}</div>`;
     }
     const recent = $("#dash-recent-applications");
-    recent.innerHTML = state.applications.length
-      ? state.applications.slice(0, 4).map((application) => applicationCard(application, true)).join("")
-      : `<div class="dash-empty">${isEmployer ? "Belum ada lamaran masuk." : "Belum ada lamaran. Mulai dari lowongan terbaru."}</div>`;
+    if (recent) {
+      recent.innerHTML = state.applications.length
+        ? state.applications.slice(0, 4).map((application) => applicationCard(application, true)).join("")
+        : `<div class="dash-empty">${isEmployer ? "Belum ada lamaran masuk." : "Belum ada lamaran. Mulai dari lowongan terbaru."}</div>`;
+    }
+
+    const counts = {
+      all: state.applications.length,
+      active: state.applications.filter((application) => !APP_CLOSED.includes(application.status)).length,
+      closed: state.applications.filter((application) => APP_CLOSED.includes(application.status)).length,
+    };
+    $$("[data-tab-count]").forEach((node) => { node.textContent = counts[node.dataset.tabCount] ?? 0; });
 
     const badge = $("#badge-applications");
     if (badge) {
@@ -255,11 +340,222 @@
     const label = $("#hero-progress-label");
     const pill = $("#cv-completion-pill");
     const badge = $("#badge-cv");
+    const ring = $("#profile-ring");
+    const ringValue = $("#profile-ring-value");
     if (bar) bar.style.width = `${completion}%`;
     if (label) label.textContent = `CV ${completion}% lengkap`;
     if (pill) pill.textContent = `${completion}% lengkap`;
     if (badge) badge.textContent = `${completion}%`;
+    if (ring) ring.style.setProperty("--pct", completion);
+    if (ringValue) ringValue.innerHTML = `${completion}<small>%</small>`;
   }
+
+  /* ======================= Job board ala LinkedIn (kandidat) ======================= */
+  function relativeAge(value) {
+    if (!value) return "Baru saja";
+    const days = Math.floor((Date.now() - new Date(value).getTime()) / 86400000);
+    if (days < 1) return "Hari ini";
+    return days === 1 ? "Kemarin" : `${days} hari lalu`;
+  }
+
+  function boardJobs() {
+    const query = state.jdQuery.trim().toLowerCase();
+    return state.publicJobs.filter((job) => {
+      const applied = state.appliedJobIds.has(Number(job.id));
+      if (state.jdFilter === "applied" && !applied) return false;
+      if (state.jdFilter === "new" && applied) return false;
+      if (!query) return true;
+      return [job.title, job.companyName, job.category, job.location, job.description]
+        .some((value) => String(value || "").toLowerCase().includes(query));
+    });
+  }
+
+  function jobRow(job, index) {
+    const applied = state.appliedJobIds.has(Number(job.id));
+    const letter = escapeHtml((job.companyName || "J").slice(0, 1));
+    const logo = job.companyLogo ? `<img src="${escapeHtml(job.companyLogo)}" alt="" loading="lazy">` : letter;
+    return `<article class="jd-row ${applied ? "is-applied" : ""} ${state.selectedJobId === Number(job.id) ? "is-active" : ""}" data-jd-select="${Number(job.id)}" style="--i:${index}" tabindex="0" role="button" aria-label="Lihat detail ${escapeHtml(job.title)}">
+        <span class="company-mark jd-row-mark">${logo}</span>
+        <div class="jd-row-copy">
+            <strong>${escapeHtml(job.title)}</strong>
+            <span class="jd-row-company">${escapeHtml(job.companyName)}</span>
+            <span class="jd-row-meta">⌖ ${escapeHtml(job.location)} · ▣ ${escapeHtml(job.type)}</span>
+            <span class="jd-row-foot">${escapeHtml(relativeAge(job.createdAt))}${job.salary ? ` · ${escapeHtml(job.salary)}` : ""}</span>
+        </div>
+        <div class="jd-row-side">${applied
+          ? '<span class="jd-row-tag jd-tag-applied">Sudah dilamar</span>'
+          : '<span class="jd-row-tag jd-row-cta">Lamar</span>'}</div>
+    </article>`;
+  }
+
+  function renderJobBoard() {
+    const list = $("#jd-job-list");
+    if (!list) return;
+    const jobs = boardJobs();
+    list.innerHTML = jobs.length
+      ? jobs.map(jobRow).join("")
+      : '<div class="dash-empty">Tidak ada lowongan yang cocok. Ubah kata kunci atau filter.</div>';
+
+    const counts = {
+      all: state.publicJobs.length,
+      new: state.publicJobs.filter((job) => !state.appliedJobIds.has(Number(job.id))).length,
+      applied: state.appliedJobIds.size,
+    };
+    $$("[data-jd-count]").forEach((node) => { node.textContent = counts[node.dataset.jdCount] ?? 0; });
+    const counter = $("#jd-result-count");
+    if (counter) counter.textContent = `${jobs.length} lowongan`;
+
+    const browseBadge = $("#badge-browse");
+    if (browseBadge) {
+      browseBadge.textContent = counts.new;
+      browseBadge.hidden = counts.new === 0;
+    }
+
+    if (state.selectedJobId && !jobs.some((job) => Number(job.id) === state.selectedJobId)) {
+      state.selectedJobId = null;
+    }
+    if (!state.selectedJobId && jobs.length) state.selectedJobId = Number(jobs[0].id);
+    renderJobDetail();
+    $$("[data-jd-select]").forEach((row) => row.classList.toggle("is-active", Number(row.dataset.jdSelect) === state.selectedJobId));
+  }
+
+  function jobDetailMarkup(job) {
+    const applied = state.appliedJobIds.has(Number(job.id));
+    const letter = escapeHtml((job.companyName || "J").slice(0, 1));
+    const logo = job.companyLogo ? `<img src="${escapeHtml(job.companyLogo)}" alt="" loading="lazy">` : letter;
+    const facts = [
+      ["Lokasi", job.location],
+      ["Tipe kerja", job.type],
+      ["Bidang", job.category || "Karier pilihan"],
+      ["Gaji", job.salary || "Gaji kompetitif"],
+      ["Dipublikasikan", relativeAge(job.createdAt)],
+      ["Pelamar", `${Number(job.applicationsCount) || 0} pelamar`],
+    ];
+    return `
+      <button class="jd-detail-back" data-jd-close type="button">← Kembali ke daftar</button>
+      <header class="jd-detail-head">
+        <div class="jd-detail-company">
+          <span class="company-mark jd-detail-mark">${logo}</span>
+          <div>
+            <span class="section-kicker">${escapeHtml((job.category || "Karier pilihan").toUpperCase())}</span>
+            <h2 id="jd-detail-title">${escapeHtml(job.title)}</h2>
+            <p class="jd-detail-sub">${escapeHtml(job.companyName)} · ${escapeHtml(job.location)}</p>
+          </div>
+        </div>
+        <div class="jd-detail-chips">
+          <span class="jd-chip">${escapeHtml(job.type)}</span>
+          <span class="jd-chip">${escapeHtml(job.salary || "Gaji kompetitif")}</span>
+          <span class="jd-chip">${escapeHtml(relativeAge(job.createdAt))}</span>
+        </div>
+        <div class="jd-detail-actions">
+          ${applied
+            ? '<span class="jd-detail-done">✓ Lamaran kamu sudah terkirim</span><a class="ghost-button" href="/applications">Lacak lamaran</a>'
+            : '<button class="button" data-apply="' + Number(job.id) + '">Lamar sekarang →</button>'}
+        </div>
+      </header>
+      <div class="jd-detail-body">
+        <div class="jd-detail-main">
+          <h3>Tentang posisi</h3>
+          <p class="jd-detail-desc">${escapeHtml(job.description || "Deskripsi posisi belum tersedia.")}</p>
+        </div>
+        <aside class="jd-detail-side">
+          <div class="jd-detail-card">
+            <h4>Info lowongan</h4>
+            <ul>${facts.map(([label, value]) => `<li><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></li>`).join("")}</ul>
+          </div>
+          <div class="jd-detail-card">
+            <h4>Tentang perusahaan</h4>
+            <div class="jd-detail-company-mini">
+              <span class="company-mark">${logo}</span>
+              <div><strong>${escapeHtml(job.companyName)}</strong><span>Perusahaan perekrut di JobAgent</span></div>
+            </div>
+          </div>
+        </aside>
+      </div>`;
+  }
+
+  function renderJobDetail() {
+    const panel = $("#jd-detail");
+    if (!panel) return;
+    const job = state.publicJobs.find((item) => Number(item.id) === state.selectedJobId);
+    if (!job) {
+      panel.innerHTML = '<div class="jd-detail-empty"><span>▤</span><strong>Pilih lowongan di daftar</strong><p>Detail posisi, kualifikasi, dan tombol melamar akan muncul di sini.</p></div>';
+      panel.classList.remove("is-active");
+      const mobileActions = $("#jd-mobile-actions");
+      if (mobileActions) { mobileActions.hidden = true; mobileActions.innerHTML = ""; }
+      return;
+    }
+    panel.innerHTML = jobDetailMarkup(job);
+    panel.classList.add("is-active");
+    panel.scrollTop = 0;
+    const board = $("#jd-board");
+    if (board) board.classList.add("is-detail-open");
+
+    const mobileActions = $("#jd-mobile-actions");
+    if (mobileActions) {
+      const applied = state.appliedJobIds.has(Number(job.id));
+      mobileActions.hidden = false;
+      mobileActions.innerHTML = applied
+        ? '<span class="jd-m-done">✓ Sudah dilamar</span><a class="ghost-button" href="/applications">Lacak lamaran</a>'
+        : `<button class="button" data-apply="${Number(job.id)}">Lamar sekarang →</button>`;
+    }
+  }
+
+  function selectJob(id) {
+    const jobId = Number(id);
+    if (!state.publicJobs.some((job) => Number(job.id) === jobId)) return;
+    state.selectedJobId = jobId;
+    $$("[data-jd-select]").forEach((row) => row.classList.toggle("is-active", Number(row.dataset.jdSelect) === jobId));
+    renderJobDetail();
+  }
+
+  function closeJobDetail() {
+    state.selectedJobId = null;
+    $$("[data-jd-select]").forEach((row) => row.classList.remove("is-active"));
+    const board = $("#jd-board");
+    if (board) board.classList.remove("is-detail-open");
+    renderJobDetail();
+  }
+
+  /* Interaksi job board & tab lamaran */
+  document.addEventListener("click", (event) => {
+    const filter = event.target.closest("[data-jd-filter]");
+    if (filter) {
+      state.jdFilter = filter.dataset.jdFilter;
+      $$("[data-jd-filter]").forEach((button) => button.classList.toggle("jd-filter-active", button === filter));
+      renderJobBoard();
+      return;
+    }
+    const row = event.target.closest("[data-jd-select]");
+    if (row) {
+      selectJob(row.dataset.jdSelect);
+      return;
+    }
+    if (event.target.closest("[data-jd-close]")) {
+      closeJobDetail();
+      return;
+    }
+    const tab = event.target.closest("[data-app-filter]");
+    if (tab) {
+      state.appFilter = tab.dataset.appFilter;
+      $$("[data-app-filter]").forEach((button) => button.classList.toggle("dash-tab-active", button === tab));
+      renderApplications();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const row = event.target.closest?.("[data-jd-select]");
+    if (row && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      selectJob(row.dataset.jdSelect);
+    }
+  });
+
+  document.addEventListener("input", (event) => {
+    if (event.target.id !== "jd-search") return;
+    state.jdQuery = event.target.value;
+    renderJobBoard();
+  });
 
   async function loadDashboard() {
     if (state.loading || state.loaded) return;
@@ -272,12 +568,19 @@
       state.stats = dashboard.stats;
       state.applications = dashboard.applications;
       state.jobs = dashboard.jobs;
-      state.suggestedJobs = (publicJobs.jobs || []).slice(0, 4);
+      state.publicJobs = publicJobs.jobs || [];
+      state.suggestedJobs = state.publicJobs.slice(0, 4);
+      dashboard.applications.forEach((application) => {
+        if (application.jobId) state.appliedJobIds.add(Number(application.jobId));
+      });
       if (dashboard.cvCompletion !== null) applyCompletion(dashboard.cvCompletion);
       state.loaded = true;
       renderStats();
       renderApplications();
       renderJobs();
+      updateProfileCounts();
+      renderJobBoard();
+      if (state.selectedJobId) selectJob(state.selectedJobId);
     } catch (error) {
       toast(error.message, true);
       const empty = `<div class="dash-empty">${escapeHtml(error.message)}</div>`;
@@ -316,14 +619,23 @@
   document.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-apply]");
     if (!button) return;
+    const jobId = Number(button.dataset.apply);
     button.disabled = true;
     try {
-      const result = await api(`/api/jobs/${button.dataset.apply}/apply`, { method: "POST" });
+      const result = await api(`/api/jobs/${jobId}/apply`, { method: "POST" });
       toast(result.message || "Lamaran terkirim.");
+      state.appliedJobIds.add(jobId);
+      state.selectedJobId = jobId;
       await reloadDashboard();
     } catch (error) {
       toast(error.message, true);
-      button.disabled = false;
+      if (error.status === 409) {
+        state.appliedJobIds.add(jobId);
+        state.selectedJobId = jobId;
+        await reloadDashboard();
+      } else {
+        button.disabled = false;
+      }
     }
   });
 

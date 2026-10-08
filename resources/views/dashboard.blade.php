@@ -19,6 +19,9 @@
         <div class="dash-nav-label">MENU</div>
         <nav class="dash-nav">
             <button class="dash-link dash-link-active" data-goto="overview"><i>▦</i><span>Ringkasan</span></button>
+            @if($user->role === 'candidate')
+                <button class="dash-link" data-goto="browse"><i>⌕</i><span>Cari lowongan</span><em class="dash-link-badge" id="badge-browse" hidden>0</em></button>
+            @endif
             @if($user->role === 'employer')
                 <button class="dash-link" data-goto="jobs"><i>▣</i><span>Lowongan saya</span><em class="dash-link-badge" id="badge-jobs" hidden>0</em></button>
             @endif
@@ -82,23 +85,106 @@
                     <article class="stat-card dash-stat-skeleton"><span>&nbsp;</span><strong>&nbsp;</strong><small>&nbsp;</small></article>
                 @endfor
             </div>
-            <div class="dash-two-col">
-                <div class="dash-panel">
-                    <div class="dash-panel-head"><div><span class="section-kicker">AKTIVITAS TERBARU</span><h2>{{ $user->role === 'employer' ? 'Lamaran terbaru masuk' : 'Lamaran terbaru' }}</h2></div><button class="dash-panel-link" data-goto="applications">Lihat semua →</button></div>
-                    <div class="dash-list" id="dash-recent-applications"><div class="dash-empty">Memuat lamaran...</div></div>
-                </div>
-                <div class="dash-panel">
-                    <div class="dash-panel-head"><div><span class="section-kicker">{{ $user->role === 'employer' ? 'LOWONGANMU' : 'REKOMENDASI UNTUKMU' }}</span><h2>{{ $user->role === 'employer' ? 'Lowongan terbaru' : 'Lowongan baru' }}</h2></div>
-                        @if($user->role === 'employer')<button class="dash-panel-link" data-goto="jobs">Kelola →</button>@endif
+            <div class="dash-overview">
+                <aside class="dash-rail dash-rail-left">
+                    <div class="dash-panel dash-profile-card">
+                        <div class="dash-profile-top">
+                            <div class="dash-profile-avatar">
+                                @if($user->role === 'employer' && $companyLogoUrl)<img src="{{ $companyLogoUrl }}" alt="" loading="lazy">@elseif($avatarUrl)<img src="{{ $avatarUrl }}" alt="" loading="lazy">@else{{ mb_substr($user->name, 0, 1) }}@endif
+                            </div>
+                            <div class="dash-profile-copy">
+                                <strong>{{ $user->name }}</strong>
+                                <span>{{ $user->role === 'employer' ? ($user->company_name ?: 'Perusahaan') : ($user->headline ?: 'Tambahkan judul karierimu') }}</span>
+                                <small>{{ collect([$user->location, $user->email])->filter()->implode(' · ') }}</small>
+                            </div>
+                        </div>
+                        @if($user->role === 'candidate')
+                            <div class="dash-ring-row">
+                                <div class="dash-ring" id="profile-ring" style="--pct: {{ $cvCompletion }}"><span id="profile-ring-value">{{ $cvCompletion }}<small>%</small></span></div>
+                                <div class="dash-ring-copy"><strong>Kelengkapan profil</strong><span id="profile-ring-note">{{ $cvCompletion >= 100 ? 'Profil lengkap. Saatnya kirim lamaran lebih sering.' : 'Lengkapi CV agar lebih mudah dilirik perusahaan.' }}</span><button data-goto="cv">{{ $cvCompletion >= 100 ? 'Tinjau CV' : 'Lengkapi sekarang' }} →</button></div>
+                            </div>
+                        @else
+                            <div class="dash-ring-row">
+                                <div class="dash-ring" style="--pct:100"><span><small>aktif</small></span></div>
+                                <div class="dash-ring-copy"><strong>Profil perusahaan</strong><span>Data perusahaan tampil pada setiap lowongan yang kamu publikasikan.</span><button data-goto="profile">Perbarui profil →</button></div>
+                            </div>
+                        @endif
+                        <div class="dash-profile-stats"><div><strong data-dash-count="applications">0</strong><span>Lamaran</span></div><div><strong data-dash-count="jobs">0</strong><span>{{ $user->role === 'candidate' ? 'Lowongan aktif' : 'Lowongan' }}</span></div></div>
                     </div>
-                    <div class="dash-list" id="dash-recent-jobs"><div class="dash-empty">Memuat lowongan...</div></div>
+                    <div class="dash-panel dash-panel-soft dash-quick-links">
+                        <span class="section-kicker">AKSES CEPAT</span>
+                        @if($user->role === 'candidate')
+                            <button data-goto="browse"><i>⌕</i><span>Cari lowongan baru</span></button>
+                            <button data-goto="cv"><i>✎</i><span>Perbarui CV online</span></button>
+                        @else
+                            <button data-goto="jobs"><i>▣</i><span>Kelola lowongan</span></button>
+                        @endif
+                        <button data-goto="applications"><i>↗</i><span>{{ $user->role === 'employer' ? 'Lihat lamaran masuk' : 'Lacak lamaran' }}</span></button>
+                        <a href="/?public=1"><i>◐</i><span>Lihat situs JobAgent</span></a>
+                    </div>
+                </aside>
+                <div class="dash-rail dash-rail-main">
+                    <div class="dash-panel">
+                        <div class="dash-panel-head"><div><span class="section-kicker">AKTIVITAS TERBARU</span><h2>{{ $user->role === 'employer' ? 'Lamaran terbaru masuk' : 'Lamaran terbaru' }}</h2></div><button class="dash-panel-link" data-goto="applications">Lihat semua →</button></div>
+                        <div class="dash-list" id="dash-recent-applications"><div class="dash-empty">Memuat lamaran...</div></div>
+                    </div>
                 </div>
+                <aside class="dash-rail dash-rail-right">
+                    <div class="dash-panel">
+                        <div class="dash-panel-head"><div><span class="section-kicker">{{ $user->role === 'employer' ? 'LOWONGANMU' : 'REKOMENDASI UNTUKMU' }}</span><h2>{{ $user->role === 'employer' ? 'Lowongan terbaru' : 'Lowongan baru' }}</h2></div>
+                            @if($user->role === 'employer')<button class="dash-panel-link" data-goto="jobs">Kelola →</button>@else<button class="dash-panel-link" data-goto="browse">Semua lowongan →</button>@endif
+                        </div>
+                        <div class="dash-list" id="dash-recent-jobs"><div class="dash-empty">Memuat lowongan...</div></div>
+                    </div>
+                    <div class="dash-panel dash-tip-card">
+                        <span class="section-kicker">TIPS JOBAGENT</span>
+                        <p>{{ $user->role === 'candidate' ? 'Lowongan yang baru tayang menerima lamaran paling cepat. Kirim dalam 3 hari pertama.' : 'Cantumkan rentang gaji dan deskripsi singkat agar kandidat lebih tertarik melamar.' }}</p>
+                    </div>
+                </aside>
             </div>
         </section>
+
+        @if($user->role === 'candidate')
+            <section class="dash-section" data-section="browse" hidden>
+                <div class="jd-board" id="jd-board">
+                    <aside class="jd-rail">
+                        <div class="jd-panel">
+                            <span class="section-kicker">FILTER LOWONGAN</span>
+                            <button class="jd-filter jd-filter-active" data-jd-filter="all"><i>▦</i><span>Semua lowongan</span><em data-jd-count="all">0</em></button>
+                            <button class="jd-filter" data-jd-filter="new"><i>✦</i><span>Belum dilamar</span><em data-jd-count="new">0</em></button>
+                            <button class="jd-filter" data-jd-filter="applied"><i>✓</i><span>Sudah dilamar</span><em data-jd-count="applied">0</em></button>
+                        </div>
+                        <div class="jd-panel jd-panel-soft">
+                            <span class="section-kicker">PROFIL KAMU</span>
+                            <p class="jd-hint">Lengkapi CV agar perusahaan lebih mudah menemukanmu.</p>
+                            <button class="ghost-button" data-goto="cv">Lengkapi CV online</button>
+                        </div>
+                    </aside>
+                    <div class="jd-column jd-column-list">
+                        <div class="jd-searchbar">
+                            <label class="jd-search"><span>⌕</span><input id="jd-search" placeholder="Posisi, perusahaan, atau bidang" autocomplete="off"></label>
+                            <span class="jd-result-count" id="jd-result-count">0 lowongan</span>
+                        </div>
+                        <div class="jd-list" id="jd-job-list"><div class="dash-empty">Memuat lowongan...</div></div>
+                    </div>
+                    <div class="jd-column jd-column-detail">
+                        <div class="jd-detail" id="jd-detail">
+                            <div class="jd-detail-empty"><span>▤</span><strong>Pilih lowongan di daftar</strong><p>Detail posisi, kualifikasi, dan tombol melamar akan muncul di sini.</p></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="jd-mobile-actions" id="jd-mobile-actions" hidden></div>
+            </section>
+        @endif
 
         <section class="dash-section" data-section="applications" hidden>
             <div class="dash-panel">
                 <div class="dash-panel-head"><div><span class="section-kicker">{{ $user->role === 'employer' ? 'SELEKSI KANDIDAT' : 'PROGRES LAMARAN' }}</span><h2>{{ $user->role === 'employer' ? 'Lamaran masuk' : 'Lamaran saya' }}</h2><p>{{ $user->role === 'employer' ? 'Perbarui status seleksi untuk setiap kandidat.' : 'Pantau perkembangan setiap lamaran yang kamu kirim.' }}</p></div></div>
+                <div class="dash-tabs" data-tabs="applications">
+                    <button class="dash-tab dash-tab-active" data-app-filter="all">Semua <em data-tab-count="all">0</em></button>
+                    <button class="dash-tab" data-app-filter="active">Diproses <em data-tab-count="active">0</em></button>
+                    <button class="dash-tab" data-app-filter="closed">Selesai <em data-tab-count="closed">0</em></button>
+                </div>
                 <div class="dash-app-list" id="dash-applications"><div class="dash-empty">Memuat lamaran...</div></div>
             </div>
         </section>
@@ -242,6 +328,7 @@
     <nav class="dash-bottomnav">
         <button class="dash-bottom-link bottom-active" data-goto="overview"><i>▦</i><span>Ringkasan</span></button>
         @if($user->role === 'employer')<button class="dash-bottom-link" data-goto="jobs"><i>▣</i><span>Lowongan</span></button>@endif
+        @if($user->role === 'candidate')<button class="dash-bottom-link" data-goto="browse"><i>⌕</i><span>Lowongan</span></button>@endif
         <button class="dash-bottom-link" data-goto="applications"><i>{{ $user->role === 'employer' ? '♧' : '↗' }}</i><span>{{ $user->role === 'employer' ? 'Masuk' : 'Lamaran' }}</span></button>
         @if($user->role === 'candidate')<button class="dash-bottom-link" data-goto="cv"><i>✎</i><span>CV</span></button>@endif
         <button class="dash-bottom-link" data-goto="profile"><i>◉</i><span>Profil</span></button>
