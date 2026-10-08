@@ -97,7 +97,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $isAdmin = $claims->get('admin') === true;
+        $isAdmin = $data['mode'] === 'login' && $claims->get('admin') === true;
         $claimName = $claims->get('name');
         $claimName = is_string($claimName) && $claimName !== '' ? $claimName : null;
         if (! $isAdmin && $data['mode'] === 'login' && ! User::where('email', $email)->exists()) {

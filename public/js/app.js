@@ -3,7 +3,11 @@ const state = {
   role: "candidate",
   jobs: [],
   category: "Semua",
+  verificationUser: null,
 };
+
+let verificationWatch = null;
+let resendCooldown = null;
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 const authModal = document.getElementById("auth-modal");
@@ -87,6 +91,21 @@ function setAuthMode(mode) {
     field.required = isRegister && !optional && field.closest("[data-profile]")?.dataset.profile === state.role;
   });
   document.getElementById("auth-submit").innerHTML = isRegister ? "Buat akun <span>→</span>" : "Masuk <span>→</span>";
+  const steps = document.getElementById("auth-steps");
+  steps.hidden = !isRegister;
+  if (isRegister) setAuthStep("profile");
+}
+
+function setAuthStep(step) {
+  const steps = document.getElementById("auth-steps");
+  if (!steps) return;
+  const order = ["profile", "account", "verify"];
+  const current = order.indexOf(step);
+  steps.querySelectorAll("[data-step]").forEach((item) => {
+    const position = order.indexOf(item.dataset.step);
+    item.classList.toggle("step-active", item.dataset.step === step);
+    item.classList.toggle("step-done", position < current);
+  });
 }
 
 function setAuthRole(role) {
@@ -173,15 +192,97 @@ async function sendVerificationLink(user) {
   });
 }
 
-async function showEmailVerificationMessage() {
-  document.getElementById("success-overlay").hidden = false;
-  document.querySelector(".success-card h2").textContent = "Satu langkah lagi.";
-  document.querySelector(".success-card p").textContent = "Kami sudah mengirim tautan verifikasi ke emailmu. Setelah tautannya dibuka, masuk kembali ke JobAgent dan mulai gunakan aplikasi sesuai peranmu.";
+function webmailUrl(email) {
+  const domain = String(email || "").split("@")[1]?.toLowerCase() || "";
+  if (domain === "gmail.com" || domain === "googlemail.com") return "https://mail.google.com";
+  if (["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(domain)) return "https://outlook.live.com/mail/0/inbox";
+  if (["yahoo.com", "yahoo.co.id", "rocketmail.com"].includes(domain)) return "https://mail.yahoo.com";
+  if (["icloud.com", "me.com", "mac.com"].includes(domain)) return "https://www.icloud.com/mail";
+  if (domain === "aol.com") return "https://mail.aol.com";
+  return null;
+}
+
+function setVerifyStatus(content, waiting = true) {
+  document.getElementById("verify-status").innerHTML = waiting
+    ? `<span class="spinner"></span> ${content}`
+    : content;
+}
+
+function stopVerificationWatch() {
+  window.clearInterval(verificationWatch);
+  verificationWatch = null;
+}
+
+function startResendCooldown(seconds) {
+  const button = document.getElementById("verify-resend");
+  let left = seconds;
+  button.disabled = true;
+  button.textContent = `Kirim ulang (${left}s)`;
+  window.clearInterval(resendCooldown);
+  resendCooldown = window.setInterval(() => {
+    left -= 1;
+    if (left <= 0) {
+      window.clearInterval(resendCooldown);
+      resendCooldown = null;
+      button.disabled = false;
+      button.textContent = "Kirim ulang tautan";
+    } else {
+      button.textContent = `Kirim ulang (${left}s)`;
+    }
+  }, 1000);
+}
+
+function closeVerificationOverlay() {
+  stopVerificationWatch();
+  window.clearInterval(resendCooldown);
+  resendCooldown = null;
+  state.verificationUser = null;
+  document.getElementById("success-overlay").hidden = true;
+  closeModal(authModal);
+}
+
+function startVerificationWatch(firebaseUser) {
+  stopVerificationWatch();
+  let attempts = 0;
+  verificationWatch = window.setInterval(async () => {
+    attempts += 1;
+    if (attempts > 100) {
+      stopVerificationWatch();
+      setVerifyStatus("Tautan belum dibuka. Selesaikan verifikasi lalu masuk kembali.", false);
+      return;
+    }
+    try {
+      await firebaseUser.reload();
+      if (!firebaseUser.emailVerified) return;
+      stopVerificationWatch();
+      setVerifyStatus("Email terverifikasi! Mengalihkan ke JobAgent…", false);
+      try {
+        await syncFirebaseSession(firebaseUser, "login");
+      } catch (error) {
+        showToast(error.message);
+        setVerifyStatus("Email terverifikasi. Masuk kembali untuk melanjutkan.", false);
+      }
+    } catch {
+      /* biarkan percobaan berikutnya */
+    }
+  }, 3000);
+}
+
+function showEmailVerificationMessage(firebaseUser) {
+  state.verificationUser = firebaseUser;
+  const email = firebaseUser?.email || authForm.elements.namedItem("email").value.trim().toLowerCase();
   document.querySelector(".success-card .section-kicker").textContent = "VERIFIKASI EMAIL";
-  window.setTimeout(() => {
-    document.getElementById("success-overlay").hidden = true;
-    closeModal(authModal);
-  }, 3200);
+  document.querySelector(".success-card h2").textContent = "Satu langkah lagi.";
+  document.getElementById("verify-copy").textContent = `Tautan verifikasi sudah dikirim ke ${email}. Setelah tautannya dibuka, kamu masuk otomatis ke JobAgent.`;
+  const openButton = document.getElementById("verify-open");
+  const webmail = webmailUrl(email);
+  openButton.hidden = !webmail;
+  if (webmail) openButton.onclick = () => window.open(webmail, "_blank", "noopener,noreferrer");
+  setVerifyStatus("Menunggu verifikasi dari email…");
+  startResendCooldown(60);
+  document.getElementById("success-overlay").hidden = false;
+  setAuthStep("verify");
+  startVerificationWatch(firebaseUser);
 }
 
 async function renderJobs() {
@@ -219,12 +320,25 @@ function relativeDate(value) {
   return days === 1 ? "1 hari lalu" : `${days} hari lalu`;
 }
 
+function renderJobSkeleton() {
+  document.getElementById("job-count").textContent = "(…)";
+  document.getElementById("job-grid").innerHTML = Array.from({ length: 6 }, () =>
+    '<div class="job-skeleton"><div class="sk-top"><span class="sk-block sk-circle"></span><span class="sk-block sk-age"></span></div><span class="sk-block sk-cat"></span><span class="sk-block sk-title"></span><span class="sk-block sk-company"></span><span class="sk-block sk-desc"></span><span class="sk-block sk-desc sk-short"></span><div class="sk-bottom"><span class="sk-block sk-salary"></span><span class="sk-block sk-btn"></span></div></div>'
+  ).join("");
+}
+
 async function loadJobs() {
+  renderJobSkeleton();
   try {
     const result = await request("/api/jobs");
     state.jobs = result.jobs;
     await renderJobs();
   } catch {
+    if (state.jobs.length) {
+      await renderJobs();
+    } else {
+      document.getElementById("job-grid").innerHTML = '<div class="empty-jobs"><span>⌕</span><strong>Lowongan belum bisa dimuat.</strong><span>Coba muat ulang halaman sebentar lagi.</span></div>';
+    }
     showToast("Lowongan belum bisa dimuat. Silakan coba lagi.");
   }
 }
@@ -343,11 +457,12 @@ authForm.addEventListener("submit", async (event) => {
         throw new Error("Konfirmasi kata sandi tidak sama.");
       }
       document.getElementById("auth-progress-label").textContent = "Membuat akun JobAgent...";
+      setAuthStep("account");
       user = (await createUserWithEmailAndPassword(auth, email, password)).user;
       const synced = await syncFirebaseSession(user, "register");
       if (!synced) {
         await sendVerificationLink(user);
-        await showEmailVerificationMessage();
+        showEmailVerificationMessage(user);
       }
     } else {
       document.getElementById("auth-progress-label").textContent = "Memverifikasi akun...";
@@ -355,11 +470,13 @@ authForm.addEventListener("submit", async (event) => {
       await user.reload();
       if (!user.emailVerified) {
         await sendVerificationLink(user);
-        throw new Error("Email belum terverifikasi. Tautan verifikasi baru sudah dikirim.");
+        showEmailVerificationMessage(user);
+      } else {
+        await syncFirebaseSession(user, "login");
       }
-      await syncFirebaseSession(user, "login");
     }
   } catch (error) {
+    if (state.mode === "register") setAuthStep("profile");
     const messages = {
       "auth/email-already-in-use": "Email sudah memiliki akun. Silakan masuk.",
       "auth/invalid-credential": "Email atau kata sandi tidak cocok. Jika mendaftar dengan Google, gunakan tombol Google.",
@@ -495,6 +612,20 @@ document.getElementById("job-form").addEventListener("submit", async (event) => 
 if ("serviceWorker" in navigator && window.location.protocol === "https:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
 }
+
+document.getElementById("verify-skip").addEventListener("click", closeVerificationOverlay);
+document.getElementById("verify-resend").addEventListener("click", async () => {
+  const user = state.verificationUser;
+  if (!user) return;
+  try {
+    await sendVerificationLink(user);
+    startResendCooldown(60);
+    showToast("Tautan verifikasi dikirim ulang ke emailmu.");
+  } catch {
+    showToast("Tautan belum bisa dikirim ulang. Coba lagi sebentar lagi.");
+  }
+});
+
 loadJobs();
 
 async function runHealthCheck() {
