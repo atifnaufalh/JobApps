@@ -55,8 +55,10 @@ FIREBASE_STORAGE_BUCKET=jobsagent-f4fda.firebasestorage.app
 FIREBASE_MESSAGING_SENDER_ID=493405453619
 FIREBASE_APP_ID=<Firebase Web app ID>
 FIREBASE_MEASUREMENT_ID=<Firebase measurement ID>
-FIREBASE_SERVICE_ACCOUNT_JSON=<seluruh isi JSON Admin SDK; simpan sebagai secret>
+FIREBASE_SERVICE_ACCOUNT_JSON=<JSON Admin SDK satu baris, atau base64:<base64 dari JSON>; simpan sebagai secret>
 ```
+
+`FIREBASE_API_KEY` harus diambil dari **Firebase Console → Project settings → General → Web API Key** milik project `jobsagent-f4fda`. Key dengan format benar tetapi berasal dari project lain/lama akan memicu error `auth/api-key-not-valid`.
 
 Frontend memakai Firebase SDK untuk pendaftaran, login email/kata sandi, login Google, verifikasi email, dan reset kata sandi. Backend hanya memverifikasi Firebase ID token menggunakan service account, membuat sesi Laravel, dan mengambil peran dari database. Email verifikasi/reset dikirim langsung oleh Firebase; Mailtarget dan OTP tidak lagi digunakan. Firebase menangani form penggantian password pada hosted action handler, lalu mengarahkan pengguna ke halaman konfirmasi Laravel `/password/reset?status=complete`. Pengguna kemudian masuk memakai kata sandi baru untuk membuka dashboard sesuai perannya.
 
@@ -78,9 +80,9 @@ SESSION_SECURE_COOKIE=true
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
 LOG_CHANNEL=stderr
-FIREBASE_SERVICE_ACCOUNT_JSON=<JSON Admin SDK lengkap; simpan sebagai secret>
+FIREBASE_SERVICE_ACCOUNT_JSON=<JSON Admin SDK satu baris, atau base64:<base64 dari JSON>; simpan sebagai secret>
 FIREBASE_PROJECT_ID=jobsagent-f4fda
-FIREBASE_API_KEY=<Firebase Web API key>
+FIREBASE_API_KEY=<Firebase Web API key project jobsagent-f4fda>
 FIREBASE_AUTH_DOMAIN=jobsagent-f4fda.firebaseapp.com
 FIREBASE_STORAGE_BUCKET=jobsagent-f4fda.firebasestorage.app
 FIREBASE_MESSAGING_SENDER_ID=493405453619
@@ -89,6 +91,8 @@ FIREBASE_MEASUREMENT_ID=<Firebase measurement ID>
 ```
 
 Ganti `Postgres` pada referensi Railway sesuai nama service database. Pastikan domain Railway juga ada di Firebase **Authorized domains**. Buat `APP_KEY` sekali dan jangan menggantinya setiap deployment karena hal itu membatalkan sesi. Pasang Railway Volume pada `/app/storage/app` agar foto profil/logo tidak hilang saat service di-redeploy.
+
+Untuk `FIREBASE_SERVICE_ACCOUNT_JSON`, tempel nilainya sebagai **satu baris** di Railway Variables. Jangan tempel JSON multi-baris: Railway bisa mengubahnya menjadi object dan merusak isi `private_key` sehingga health check melaporkan `firebase: error`. Jika ragu, gunakan bentuk `base64:<base64 dari file JSON>`; aplikasi mendukungnya secara bawaan. Verifikasi nilai dengan `GET /api/health` — `checks.firebase` harus `ok`.
 
 Health check memeriksa koneksi database serta konfigurasi Firebase; ia tidak mengirim email atau membuat panggilan autentikasi berbayar.
 

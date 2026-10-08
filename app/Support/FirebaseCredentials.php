@@ -35,6 +35,16 @@ class FirebaseCredentials
             throw new InvalidArgumentException('Firebase credentials are not configured.');
         }
 
+        $json = trim($json);
+
+        if (stripos($json, 'base64:') === 0) {
+            $binary = base64_decode(substr($json, 7), true);
+            if ($binary === false) {
+                throw new InvalidArgumentException('Firebase credentials base64 payload is invalid.');
+            }
+            $json = $binary;
+        }
+
         try {
             $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
@@ -49,6 +59,14 @@ class FirebaseCredentials
             || $decoded['project_id'] !== config('services.firebase.project_id')
         ) {
             throw new InvalidArgumentException('Firebase credentials are incomplete or use a different project.');
+        }
+
+        if (
+            is_string($decoded['private_key'])
+            && ! str_contains($decoded['private_key'], "\n")
+            && str_contains($decoded['private_key'], '\\n')
+        ) {
+            $decoded['private_key'] = str_replace('\\n', "\n", $decoded['private_key']);
         }
 
         return $decoded;
