@@ -31,7 +31,7 @@ class AuthController extends Controller
     {
         $token = $request->bearerToken();
         if (! $token) {
-            return response()->json(['error' => 'Token Firebase tidak ditemukan.'], 401);
+            return response()->json(['error' => 'Sesi masuk tidak ditemukan. Silakan coba lagi.'], 401);
         }
 
         try {
@@ -42,11 +42,11 @@ class AuthController extends Controller
         } catch (InvalidArgumentException) {
             Log::error('Firebase credentials are unavailable for ID token verification.');
 
-            return response()->json(['error' => 'Autentikasi Firebase belum dikonfigurasi di server.'], 503);
+            return response()->json(['error' => 'Sistem masuk belum dikonfigurasi di server. Coba lagi nanti.'], 503);
         } catch (Throwable $exception) {
             Log::warning('Firebase ID token verification failed.', ['exception' => $exception::class]);
 
-            return response()->json(['error' => 'Sesi Firebase tidak valid atau kedaluwarsa. Silakan masuk kembali.'], 401);
+            return response()->json(['error' => 'Sesi tidak valid atau sudah kedaluwarsa. Silakan masuk kembali.'], 401);
         }
 
         $claims = $verifiedToken->claims();
@@ -54,7 +54,7 @@ class AuthController extends Controller
         $firebaseUid = $claims->get('sub');
         $emailVerified = $claims->get('email_verified') === true;
         if (! is_string($email) || ! is_string($firebaseUid) || $email === '') {
-            return response()->json(['error' => 'Token Firebase tidak memiliki email yang valid.'], 401);
+            return response()->json(['error' => 'Sesi masuk tidak memiliki email yang valid.'], 401);
         }
         $email = Str::lower($email);
 
@@ -97,11 +97,18 @@ class AuthController extends Controller
             ]);
         }
 
+        $isAdmin = $claims->get('admin') === true;
+        $claimName = $claims->get('name');
+        $claimName = is_string($claimName) && $claimName !== '' ? $claimName : null;
+        if (! $isAdmin && $data['mode'] === 'login' && ! User::where('email', $email)->exists()) {
+            $isAdmin = $this->firebaseHasAdminClaim($firebaseUid);
+        }
+
         if ($data['mode'] === 'login' && ! $emailVerified) {
             return response()->json(['error' => 'Verifikasi email Anda sebelum masuk.'], 403);
         }
 
-        $user = DB::transaction(function () use ($data, $email, $firebaseUid, $emailVerified, $profile, $request): ?User {
+        $user = DB::transaction(function () use ($data, $email, $firebaseUid, $emailVerified, $profile, $request, $isAdmin, $claimName): ?User {
             $user = User::where('email', $email)->lockForUpdate()->first();
             $uidOwner = User::where('firebase_uid', $firebaseUid)->first();
             if ($uidOwner && (! $user || $uidOwner->id !== $user->id)) {
@@ -112,14 +119,16 @@ class AuthController extends Controller
                 return $user;
             }
 
-            if (! $user && $data['mode'] === 'login') {
+            if (! $user && $data['mode'] === 'login' && ! $isAdmin) {
                 return null;
             }
 
             if (! $user) {
-                $role = $data['role'];
+                $role = $isAdmin ? 'admin' : $data['role'];
                 $user = User::create([
-                    'name' => $role === 'candidate' ? $profile['fullName'] : $profile['contactName'],
+                    'name' => $isAdmin
+                        ? ($claimName ?: Str::before($email, '@'))
+                        : ($role === 'candidate' ? $profile['fullName'] : $profile['contactName']),
                     'email' => $email,
                     'firebase_uid' => $firebaseUid,
                     'role' => $role,
@@ -143,6 +152,9 @@ class AuthController extends Controller
             }
 
             $changes = [];
+            if ($isAdmin && $user->role !== 'admin') {
+                $changes['role'] = 'admin';
+            }
             if ($user->firebase_uid !== $firebaseUid) {
                 $changes['firebase_uid'] = $firebaseUid;
             }
@@ -159,14 +171,14 @@ class AuthController extends Controller
         if (! $user) {
             return response()->json([
                 'error' => $data['mode'] === 'register'
-                    ? 'Identitas Firebase ini sudah terhubung ke akun lain.'
+                    ? 'Email ini sudah terhubung ke akun lain.'
                     : 'Akun JobAgent untuk email ini belum terdaftar.',
             ], $data['mode'] === 'register' ? 409 : 404);
         }
 
         if (! $emailVerified) {
             return response()->json([
-                'message' => 'Akun dibuat. Verifikasi email melalui tautan Firebase sebelum masuk.',
+                'message' => 'Akun dibuat. Periksa email Anda untuk tautan verifikasi sebelum masuk.',
                 'verificationRequired' => true,
             ], 202);
         }
@@ -192,6 +204,21 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return response()->json(['message' => 'Anda sudah keluar dari JobAgent.']);
+    }
+
+    private function firebaseHasAdminClaim(string $firebaseUid): bool
+    {
+        try {
+            $claims = (new Factory)
+                ->withServiceAccount(app(FirebaseCredentials::class)->load())
+                ->createAuth()
+                ->getUser($firebaseUid)
+                ->customClaims();
+
+            return ($claims['admin'] ?? false) === true;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function userData(User $user): array

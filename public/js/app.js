@@ -176,7 +176,7 @@ async function sendVerificationLink(user) {
 async function showEmailVerificationMessage() {
   document.getElementById("success-overlay").hidden = false;
   document.querySelector(".success-card h2").textContent = "Satu langkah lagi.";
-  document.querySelector(".success-card p").textContent = "Buka email dan klik tautan verifikasi Firebase. Jika tautan dibuka di perangkat lain, kembali lalu masuk dengan email dan kata sandi.";
+  document.querySelector(".success-card p").textContent = "Kami sudah mengirim tautan verifikasi ke emailmu. Setelah tautannya dibuka, masuk kembali ke JobAgent dan mulai gunakan aplikasi sesuai peranmu.";
   document.querySelector(".success-card .section-kicker").textContent = "VERIFIKASI EMAIL";
   window.setTimeout(() => {
     document.getElementById("success-overlay").hidden = true;
@@ -342,7 +342,7 @@ authForm.addEventListener("submit", async (event) => {
       if (password !== authForm.elements.namedItem("password_confirmation").value) {
         throw new Error("Konfirmasi kata sandi tidak sama.");
       }
-      document.getElementById("auth-progress-label").textContent = "Membuat akun Firebase...";
+      document.getElementById("auth-progress-label").textContent = "Membuat akun JobAgent...";
       user = (await createUserWithEmailAndPassword(auth, email, password)).user;
       const synced = await syncFirebaseSession(user, "register");
       if (!synced) {
@@ -365,11 +365,11 @@ authForm.addEventListener("submit", async (event) => {
       "auth/invalid-credential": "Email atau kata sandi tidak cocok. Jika mendaftar dengan Google, gunakan tombol Google.",
       "auth/invalid-email": "Format email tidak valid.",
       "auth/weak-password": "Kata sandi harus terdiri dari minimal 6 karakter.",
-      "auth/operation-not-allowed": "Aktifkan metode Email/Password di Firebase Authentication.",
+      "auth/operation-not-allowed": "Pendaftaran melalui email belum diaktifkan. Hubungi admin JobAgent.",
       "auth/too-many-requests": "Terlalu banyak percobaan. Coba lagi nanti.",
-      "auth/unauthorized-domain": "Domain aplikasi belum diizinkan di Firebase Authentication.",
+      "auth/unauthorized-domain": "Alamat domain ini belum diizinkan untuk masuk. Hubungi admin JobAgent.",
       "auth/user-disabled": "Akun ini dinonaktifkan. Hubungi administrator JobAgent.",
-      "auth/api-key-not-valid": "Firebase API key tidak valid. Periksa FIREBASE_API_KEY di Railway dan pastikan berasal dari project jobsagent-f4fda.",
+      "auth/api-key-not-valid": "Konfigurasi masuk belum siap. Coba lagi beberapa saat atau hubungi admin JobAgent.",
     };
     const message = error.status === 404
       ? "Profil JobAgent belum ada. Pilih Daftar untuk membuat profil dengan akun ini."
@@ -407,10 +407,10 @@ document.getElementById("google-auth").addEventListener("click", async (event) =
     const messages = {
       "auth/popup-closed-by-user": "Proses masuk Google dibatalkan.",
       "auth/popup-blocked": "Izinkan pop-up untuk masuk dengan Google.",
-      "auth/operation-not-allowed": "Aktifkan Google sebagai metode login di Firebase Authentication.",
-      "auth/unauthorized-domain": "Domain aplikasi belum diizinkan di Firebase Authentication.",
+      "auth/operation-not-allowed": "Login Google belum diaktifkan. Hubungi admin JobAgent.",
+      "auth/unauthorized-domain": "Alamat domain ini belum diizinkan untuk masuk. Hubungi admin JobAgent.",
       "auth/account-exists-with-different-credential": "Email ini sudah terdaftar menggunakan metode lain. Masuk dengan metode awal untuk akun tersebut.",
-      "auth/api-key-not-valid": "Firebase API key tidak valid. Periksa FIREBASE_API_KEY di Railway dan pastikan berasal dari project jobsagent-f4fda.",
+      "auth/api-key-not-valid": "Konfigurasi masuk belum siap. Coba lagi beberapa saat atau hubungi admin JobAgent.",
     };
     const message = error.status === 404 && state.mode === "login"
       ? "Profil JobAgent belum ada. Pilih Daftar untuk membuat profil dengan akun Google ini."

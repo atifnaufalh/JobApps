@@ -17,7 +17,7 @@
             <a class="brand" href="/"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a>
             <span class="section-kicker">{{ $resetComplete ? 'RESET BERHASIL' : 'KEAMANAN AKUN' }}</span>
             <h1 id="reset-title">{{ $resetComplete ? 'Kata sandi diperbarui.' : 'Reset kata sandi.' }}</h1>
-            <p class="reset-intro">{{ $resetComplete ? 'Kata sandi Firebase Anda berhasil diubah. Masuk kembali menggunakan email dan kata sandi baru untuk membuka dashboard JobAgent.' : 'Untuk mereset kata sandi, gunakan tautan resmi dari email Firebase. Setelah berhasil, Anda akan kembali ke halaman ini.' }}</p>
+            <p class="reset-intro">{{ $resetComplete ? 'Kata sandi Anda berhasil diubah. Masuk kembali dengan email dan kata sandi baru untuk melanjutkan menggunakan JobAgent.' : 'Untuk mereset kata sandi, gunakan tautan resmi yang kami kirim ke email Anda. Setelah berhasil, Anda akan kembali ke halaman ini.' }}</p>
             <a class="button auth-submit reset-login-link" href="/?login=account">{{ $resetComplete ? 'Masuk ke JobAgent' : 'Kembali ke halaman masuk' }} <span>→</span></a>
         </section>
     </main>
