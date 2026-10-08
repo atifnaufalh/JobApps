@@ -200,7 +200,7 @@
   function jobCardFull(job) {
     return `<article class="dash-job-card ${job.status === "closed" ? "job-closed" : ""}">
         <div class="dash-job-top">
-            <div><span class="section-kicker">${escapeHtml(job.category)}</span><h3>${escapeHtml(job.title)}</h3></div>
+            <div><span class="section-kicker">${escapeHtml(job.category || "Karier pilihan")}</span><h3>${escapeHtml(job.title)}</h3></div>
             <span class="dash-status status-${escapeHtml(job.status)}">${job.status === "active" ? "Aktif" : "Ditutup"}</span>
         </div>
         <div class="dash-job-meta"><span>⌖ ${escapeHtml(job.location)}</span><span>▣ ${escapeHtml(job.type)}</span>${job.salary ? `<span>◎ ${escapeHtml(job.salary)}</span>` : ""}</div>
@@ -339,7 +339,7 @@
       jobForm.elements.title.value = job.title;
       jobForm.elements.location.value = job.location;
       jobForm.elements.type.value = job.type;
-      jobForm.elements.category.value = job.category;
+      jobForm.elements.category.value = job.category || "";
       jobForm.elements.salary.value = job.salary || "";
       jobForm.elements.description.value = job.description;
       jobForm.elements.status.value = job.status;

@@ -151,7 +151,7 @@ class JobController extends Controller
             'location' => ['required', 'string', 'min:2', 'max:120'],
             'type' => ['required', Rule::in(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'])],
             'salary' => ['nullable', 'string', 'max:80'],
-            'category' => ['required', 'string', 'max:60'],
+            'category' => ['nullable', 'string', 'max:60'],
             'description' => ['required', 'string', 'min:30', 'max:5000'],
         ]);
 
@@ -172,7 +172,7 @@ class JobController extends Controller
             'location' => ['required', 'string', 'min:2', 'max:120'],
             'type' => ['required', Rule::in(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote'])],
             'salary' => ['nullable', 'string', 'max:80'],
-            'category' => ['required', 'string', 'max:60'],
+            'category' => ['nullable', 'string', 'max:60'],
             'description' => ['required', 'string', 'min:30', 'max:5000'],
             'status' => ['required', Rule::in(['active', 'closed'])],
         ]);
