@@ -179,7 +179,7 @@ async function syncFirebaseSession(user, mode) {
   if (result.user.role === "admin") {
     window.location.assign("/admin");
   } else {
-    window.location.reload();
+    window.location.assign("/dashboard");
   }
   return true;
 }

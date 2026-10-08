@@ -11,8 +11,13 @@ use Illuminate\Support\Facades\Storage;
 
 class JobController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $user = $request->user();
+        if ($user && ! $request->boolean('public')) {
+            return redirect()->route($user->role === 'admin' ? 'admin.dashboard' : 'dashboard');
+        }
+
         $jobs = Job::with('employer:id,company_name,company_logo_path')
             ->where('status', 'active')
             ->latest()

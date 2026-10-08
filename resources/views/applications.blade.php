@@ -13,8 +13,8 @@
 <body class="applications-page" data-role="{{ $user->role }}">
     <header class="site-header">
         <div class="header-inner">
-            <a class="brand" href="/" aria-label="JobAgent beranda"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a>
-            <nav class="main-nav"><a href="/">Beranda</a><a href="/#lowongan">Cari kerja</a><a href="{{ route('dashboard') }}">Dashboard</a><a href="{{ route('applications') }}">{{ $user->role === 'employer' ? 'Lamaran masuk' : 'Lamaran saya' }}</a></nav>
+            <a class="brand" href="{{ route('dashboard') }}" aria-label="JobAgent beranda"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a>
+            <nav class="main-nav"><a href="/?public=1">Beranda</a><a href="/?public=1#lowongan">Cari kerja</a><a href="{{ route('dashboard') }}">Dashboard</a><a href="{{ route('applications') }}">{{ $user->role === 'employer' ? 'Lamaran masuk' : 'Lamaran saya' }}</a></nav>
             <div class="header-actions"><span class="applications-user">{{ $user->name }}</span><button class="text-button" id="applications-logout">Keluar</button></div>
         </div>
     </header>

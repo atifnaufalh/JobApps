@@ -15,7 +15,7 @@
     <div class="dash-backdrop" data-dash-close hidden></div>
 
     <aside class="dash-sidebar" id="dash-sidebar">
-        <a class="brand dash-brand" href="/"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a>
+        <a class="brand dash-brand" href="{{ route('dashboard') }}"><img src="{{ asset('jobagent-mark.svg') }}" alt=""><span>jobagent<span class="brand-dot">.</span></span></a>
         <div class="dash-nav-label">MENU</div>
         <nav class="dash-nav">
             <button class="dash-link dash-link-active" data-goto="overview"><i>▦</i><span>Ringkasan</span></button>
@@ -30,7 +30,7 @@
         </nav>
         <div class="dash-nav-label dash-nav-label-foot">AKUN</div>
         <nav class="dash-nav">
-            <a class="dash-link" href="/"><i>↗</i><span>Lihat situs</span></a>
+            <a class="dash-link" href="/?public=1"><i>↗</i><span>Lihat situs</span></a>
             <button class="dash-link" data-dash-logout><i>⏻</i><span>Keluar</span></button>
         </nav>
         <div class="dash-sidebar-card">
@@ -236,7 +236,7 @@
             </div>
         </section>
 
-        <footer class="dash-footer"><span>JobAgent {{ $user->role === 'employer' ? 'Employer Workspace' : 'Career Workspace' }} · © {{ date('Y') }} JobAgent</span><a href="/">Kembali ke beranda →</a></footer>
+        <footer class="dash-footer"><span>JobAgent {{ $user->role === 'employer' ? 'Employer Workspace' : 'Career Workspace' }} · © {{ date('Y') }} JobAgent</span><a href="/?public=1">Lihat situs publik →</a></footer>
     </main>
 
     <nav class="dash-bottomnav">
